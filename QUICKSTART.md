@@ -159,7 +159,40 @@ cat /tmp/news-collector.log
 
 ## 9. Deploy to Production
 
-### Frontend on Netlify
+### Option A: Deploy to Render (Blueprint — recommended)
+
+The repo includes a `render.yaml` Blueprint that deploys the **API**, **frontend**, and **daily cron** in one go.
+
+1. **MongoDB Atlas (required first):**
+   - Sign up at https://www.mongodb.com/cloud/atlas
+   - Create a free M0 cluster, database user, and allow `0.0.0.0/0` in Network Access
+   - Copy your connection string: `mongodb+srv://user:pass@cluster.mongodb.net/news_sentiment`
+
+2. **Connect the Blueprint:**
+   - Go to [Render Blueprints](https://dashboard.render.com/blueprints)
+   - Click **New → Blueprint**
+   - Connect the `news-sentiment-comparison` GitHub repo and select the branch
+
+3. **Add secrets when prompted:**
+   - `NEWS_API_KEY` — from https://newsapi.org
+   - `GROQ_API_KEY` **or** `OPENAI_API_KEY` — Groq: https://console.groq.com; OpenAI: https://platform.openai.com
+   - `MONGODB_URI` — your Atlas connection string
+
+4. **Deploy.** Render creates:
+   - **news-sentiment-api** — FastAPI at `https://news-sentiment-api.onrender.com`
+   - **news-sentiment-frontend** — React app at `https://news-sentiment-frontend.onrender.com`
+   - **news-sentiment-collector** — Cron job (daily 10:00 AM UTC)
+
+5. **Run the DB setup once:**  
+   Locally, set `MONGODB_URI` to your Atlas URL and run:
+   ```bash
+   python scripts/setup_db.py
+   ```
+   Then trigger a manual run of the collector in Render, or wait for the first scheduled run.
+
+**Custom domains:** In each service’s Render dashboard, add your domain under **Settings → Custom Domains**. Update `CORS_ORIGINS` on the API to include your frontend URL.
+
+### Option B: Frontend on Netlify + Backend elsewhere
 
 1. **Build the frontend:**
    ```bash
@@ -205,8 +238,7 @@ You need a MongoDB Atlas cluster before the app will work on Render. The app req
 2. Create a free M0 cluster (takes ~5 minutes to provision)
 3. Create a database user (Database Access → Add New User)
 4. Whitelist IP addresses (Network Access → Add IP Address → Allow Access from Anywhere: `0.0.0.0/0`)
-5. Get connection string (Database → Connect → Connect your application) #would this use python?
-#yes, it would use python.
+5. Get connection string (Database → Connect → Connect your application)
 6. Copy the connection string (format: `mongodb+srv://username:password@cluster.mongodb.net/news_sentiment`)
 
 When creating a new Web Service on Render:
