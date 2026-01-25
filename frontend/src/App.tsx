@@ -14,7 +14,6 @@ function App() {
   const [selectedDate, setSelectedDate] = useState<string>(
     format(new Date(), 'yyyy-MM-dd')
   );
-  const [displayedDate, setDisplayedDate] = useState<string | null>(null);
   const [noDataAvailable, setNoDataAvailable] = useState(false);
 
   useEffect(() => {
@@ -28,7 +27,6 @@ function App() {
       setNoDataAvailable(false);
       const data = await apiService.getDate(selectedDate);
       setComparison(data);
-      setDisplayedDate(selectedDate);
     } catch (err: any) {
       // If 404 and we haven't tried fallback yet, try to get most recent date
       if (err?.response?.status === 404 && tryFallback) {
@@ -38,7 +36,6 @@ function App() {
             // Use the most recent available date
             const mostRecent = history.comparisons[0];
             setComparison(mostRecent);
-            setDisplayedDate(mostRecent.date);
             setError(`No data for ${selectedDate}. Showing most recent available: ${mostRecent.date}`);
             return;
           }
