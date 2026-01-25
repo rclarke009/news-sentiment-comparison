@@ -21,7 +21,17 @@ from news_sentiment.api.schemas import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-db = NewsDatabase()
+
+# Lazy database initialization - only connect when needed
+_db_instance: Optional[NewsDatabase] = None
+
+
+def get_db() -> NewsDatabase:
+    """Get database instance, initializing on first access."""
+    global _db_instance
+    if _db_instance is None:
+        _db_instance = NewsDatabase()
+    return _db_instance
 
 
 # Acronyms for NewsAPI source IDs (lowercase id -> display name)
@@ -58,6 +68,7 @@ async def health_check():
     """Health check endpoint."""
     try:
         # Test database connection
+        db = get_db()
         db.client.admin.command("ping")
         return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
     except Exception as e:
@@ -68,6 +79,7 @@ async def health_check():
 @router.get("/today", response_model=DailyComparisonResponse, tags=["comparisons"])
 async def get_today():
     """Get today's comparison."""
+    db = get_db()
     today = date.today().isoformat()
     comparison = db.get_daily_comparison(today)
     
@@ -89,6 +101,7 @@ async def get_date(date_str: str):
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
     
+    db = get_db()
     comparison = db.get_daily_comparison(date_str)
     
     if not comparison:
@@ -103,6 +116,7 @@ async def get_date(date_str: str):
 @router.get("/history", response_model=HistoryResponse, tags=["comparisons"])
 async def get_history(days: int = Query(7, ge=1, le=365)):
     """Get historical comparisons for the last N days."""
+    db = get_db()
     comparisons = db.get_recent_comparisons(days)
     
     if not comparisons:
@@ -134,6 +148,7 @@ async def get_most_uplifting(
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
     
+    db = get_db()
     comparison = db.get_daily_comparison(date_str)
     
     if not comparison:
@@ -165,6 +180,7 @@ async def get_most_uplifting(
 @router.get("/stats", response_model=StatsResponse, tags=["statistics"])
 async def get_stats(days: int = Query(30, ge=1, le=365)):
     """Get aggregate statistics over the last N days."""
+    db = get_db()
     comparisons = db.get_recent_comparisons(days)
     
     if not comparisons:
