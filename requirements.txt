@@ -2,7 +2,7 @@
 requests>=2.31.0
 python-dotenv>=1.0.0
 pydantic>=2.5.0
-pymongo>=4.6.0
+pymongo[srv]>=4.6.0
 
 # LLM API clients
 groq>=0.4.0

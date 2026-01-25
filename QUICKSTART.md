@@ -205,7 +205,8 @@ You need a MongoDB Atlas cluster before the app will work on Render. The app req
 2. Create a free M0 cluster (takes ~5 minutes to provision)
 3. Create a database user (Database Access → Add New User)
 4. Whitelist IP addresses (Network Access → Add IP Address → Allow Access from Anywhere: `0.0.0.0/0`)
-5. Get connection string (Database → Connect → Connect your application)
+5. Get connection string (Database → Connect → Connect your application) #would this use python?
+#yes, it would use python.
 6. Copy the connection string (format: `mongodb+srv://username:password@cluster.mongodb.net/news_sentiment`)
 
 When creating a new Web Service on Render:
