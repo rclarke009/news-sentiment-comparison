@@ -4,10 +4,9 @@ import { MostUpliftingStory } from '../services/api';
 interface MostUpliftingCardProps {
   side: 'conservative' | 'liberal';
   story: MostUpliftingStory | null;
-  date: string;
 }
 
-const MostUpliftingCard: React.FC<MostUpliftingCardProps> = ({ side, story, date }) => {
+const MostUpliftingCard: React.FC<MostUpliftingCardProps> = ({ side, story }) => {
   const colorClass = side === 'conservative' ? 'border-red-500 bg-red-50' : 'border-blue-500 bg-blue-50';
   const titleColor = side === 'conservative' ? 'text-red-700' : 'text-blue-700';
   const badgeColor = side === 'conservative' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800';

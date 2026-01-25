@@ -7,7 +7,11 @@ import sys
 from pathlib import Path
 
 # Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))  #how does parent.parent work?
+#it works because the parent directory is the news-sentiment-comparison directory.
+#so the parent.parent is the parent of the parent directory.
+#which is the root directory.
+#so the parent.parent is the root directory.
 
 import requests
 from news_sentiment.config import get_config

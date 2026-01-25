@@ -153,12 +153,10 @@ function App() {
           <MostUpliftingCard
             side="conservative"
             story={comparison.conservative.most_uplifting}
-            date={dateToDisplay}
           />
           <MostUpliftingCard
             side="liberal"
             story={comparison.liberal.most_uplifting}
-            date={dateToDisplay}
           />
         </div>
 
