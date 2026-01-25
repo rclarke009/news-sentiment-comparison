@@ -32,6 +32,17 @@ app.add_middleware(
 app.include_router(routes.router, prefix="/api/v1")
 
 
+@app.get("/")
+async def root():
+    """Root endpoint - provides API information."""
+    return {
+        "message": "News Sentiment Comparison API",
+        "version": "0.1.0",
+        "docs": "/docs",
+        "api": "/api/v1"
+    }
+
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize on startup."""

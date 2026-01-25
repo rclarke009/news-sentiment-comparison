@@ -94,6 +94,48 @@ Frontend available at: http://localhost:3000
 2. **Check API**: Visit http://localhost:8000/api/v1/today
 3. **View dashboard**: Visit http://localhost:3000
 
+## Making Code Changes & Restarting
+
+### Local development
+
+| What changed | API (uvicorn) | Frontend (npm run dev) | Collector / cron |
+|--------------|---------------|------------------------|------------------|
+| **Python code** (e.g. `news_sentiment/`, `scripts/`) | Auto-reloads (`--reload`) | — | Re-run `python scripts/run_collector.py` or wait for next cron |
+| **Frontend code** (e.g. `frontend/src/`) | — | Hot reload (HMR) | — |
+| **`requirements.txt`** | Restart API: `Ctrl+C` then `uvicorn news_sentiment.api.main:app --reload` | — | Re-run collector after restarting |
+| **`frontend/package.json`** or new deps | — | Restart: `Ctrl+C` then `npm run dev` | — |
+| **`.env`** or env vars | Restart API | Restart frontend if `VITE_*` vars change | Re-run collector |
+
+**Restarting locally:**
+
+```bash
+# API (from project root, with venv activated)
+uvicorn news_sentiment.api.main:app --reload
+
+# Frontend
+cd frontend && npm run dev
+
+# One-off collector run
+python scripts/run_collector.py
+```
+
+### Render (production)
+
+| What changed | API | Frontend | Cron (collector) |
+|--------------|-----|----------|------------------|
+| **Application code** (push to Git) | Auto redeploy on push | Auto redeploy on push | Uses new code on next scheduled run |
+| **Env vars** (Dashboard → Environment) | Redeploy required | Redeploy required | Next run uses new vars |
+| **`render.yaml`** (new services, etc.) | Update via Blueprint sync | — | — |
+
+**Update and restart on Render:**
+
+1. **Code changes:** Push to your connected branch (e.g. `main`). Render builds and deploys the API and frontend automatically.
+2. **Env var changes:** In [Render Dashboard](https://dashboard.render.com) → your service → **Environment** → Save. Then **Manual Deploy** → **Deploy latest commit** (or trigger a redeploy).
+3. **Manual redeploy:** Dashboard → service → **Manual Deploy** → **Deploy latest commit**.
+4. **Cron:** No “restart.” It runs on a schedule; each run uses the current code and env from the last deploy. To run immediately, use **Cron Job** → **Trigger Run** (or equivalent).
+
+**Blueprint (multi-service):** If you use the `render.yaml` Blueprint, push code changes as above; both API and frontend redeploy. Adjust env vars per service in the dashboard, then redeploy each service as needed.
+
 ## Troubleshooting
 
 ### MongoDB Connection Failed

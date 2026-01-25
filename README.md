@@ -205,6 +205,13 @@ keywords: ["heartwarming", "inspiring", "rescue", "hero", ...]
 
 ## Development
 
+### Making code changes and restarting
+
+- **Local:** API runs with `--reload` and the frontend with `npm run dev` (HMR), so most code edits apply without restarting. Restart the API if you change `requirements.txt` or `.env`; restart the frontend if you change `package.json` or `VITE_*` env vars. Re-run `python scripts/run_collector.py` after backend changes if you use the collector.
+- **Render (production):** Push to the connected branch to trigger a rebuild and deploy of the API and frontend. Change env vars in the Render dashboard, then redeploy the affected service(s). The cron job uses the latest deploy on each run; use **Trigger Run** in the dashboard to run it immediately.
+
+See **QUICKSTART.md** → [Making Code Changes & Restarting](QUICKSTART.md#making-code-changes--restarting) for full tables and commands.
+
 ### Running Tests
 
 ```bash
