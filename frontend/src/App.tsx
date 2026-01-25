@@ -131,8 +131,6 @@ function App() {
     return null;
   }
 
-  const dateToDisplay = displayedDate || selectedDate;
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Header selectedDate={selectedDate} onDateChange={setSelectedDate} />
