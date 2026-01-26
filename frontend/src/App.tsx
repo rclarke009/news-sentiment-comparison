@@ -21,17 +21,32 @@ function App() {
   }, [selectedDate]);
 
   const loadComparison = async (tryFallback = true) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:23',message:'loadComparison called',data:{selectedDate,tryFallback},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+    // #endregion
     try {
       setLoading(true);
       setError(null);
       setNoDataAvailable(false);
       const data = await apiService.getDate(selectedDate);
+      // #region agent log
+      fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:29',message:'getDate succeeded',data:{selectedDate,hasData:!!data},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+      // #endregion
       setComparison(data);
     } catch (err: any) {
+      // #region agent log
+      fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:31',message:'getDate failed',data:{selectedDate,status:err?.response?.status,detail:err?.response?.data?.detail,willTryFallback:err?.response?.status === 404 && tryFallback},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+      // #endregion
       // If 404 and we haven't tried fallback yet, try to get most recent date
       if (err?.response?.status === 404 && tryFallback) {
+        // #region agent log
+        fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:33',message:'Attempting history fallback',data:{selectedDate},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+        // #endregion
         try {
           const history = await apiService.getHistory(30);
+          // #region agent log
+          fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:35',message:'History fallback succeeded',data:{comparisonCount:history.comparisons?.length,hasComparisons:!!(history.comparisons && history.comparisons.length > 0)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+          // #endregion
           if (history.comparisons && history.comparisons.length > 0) {
             // Use the most recent available date
             const mostRecent = history.comparisons[0];
@@ -39,7 +54,10 @@ function App() {
             setError(`No data for ${selectedDate}. Showing most recent available: ${mostRecent.date}`);
             return;
           }
-        } catch (historyErr) {
+        } catch (historyErr: any) {
+          // #region agent log
+          fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:43',message:'History fallback failed',data:{status:historyErr?.response?.status,detail:historyErr?.response?.data?.detail,message:historyErr?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+          // #endregion
           // History also failed, continue to show error
         }
       }
@@ -82,12 +100,14 @@ function App() {
                 It looks like this is your first time running the application. You need to collect some news data first.
               </p>
               <div className="bg-gray-50 rounded-lg p-6 text-left">
-                <h3 className="font-semibold text-gray-800 mb-3">To get started:</h3>
-                <ol className="list-decimal list-inside space-y-2 text-gray-700">
-                  <li>Make sure your API server is running: <code className="bg-gray-200 px-2 py-1 rounded">uvicorn news_sentiment.api.main:app --reload</code></li>
-                  <li>Run the collector script: <code className="bg-gray-200 px-2 py-1 rounded">python scripts/run_collector.py</code></li>
-                  <li>Refresh this page to see your data!</li>
-                </ol>
+                <h3 className="font-semibold text-gray-800 mb-3">No data has been collected yet</h3>
+                <p className="text-gray-700 mb-3">
+                  The news collector runs automatically on a schedule. If this is a new deployment, 
+                  data will appear after the first scheduled collection runs.
+                </p>
+                <p className="text-sm text-gray-600">
+                  For local development, you can run: <code className="bg-gray-200 px-2 py-1 rounded text-xs">python scripts/run_collector.py</code>
+                </p>
               </div>
               <button
                 onClick={() => loadComparison(false)}
