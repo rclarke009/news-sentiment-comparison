@@ -71,3 +71,6 @@ htmlcov/
 
 # MongoDB
 *.bson
+
+# Local Netlify folder
+.netlify
