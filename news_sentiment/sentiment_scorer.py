@@ -67,7 +67,7 @@ class SentimentScorer:
             return final_score
         
         except Exception as e:
-            logger.error(f"Error scoring headline '{headline.title}': {e}")
+            logger.error(f"Error scoring headline '{headline.title}': {e}", exc_info=True)
             # Return neutral score on error
             headline.uplift_score = 0.0
             headline.final_score = 0.0
@@ -130,7 +130,7 @@ Respond with ONLY a single number between -5 and +5 (e.g., "3.2" or "-1.5"). Do 
             return score
         
         except Exception as e:
-            logger.error(f"LLM API error: {e}")
+            logger.error(f"LLM API error for headline '{headline.title[:50]}...': {e}", exc_info=True)
             raise
     
     def _parse_score(self, content: str) -> float:
@@ -174,7 +174,7 @@ Respond with ONLY a single number between -5 and +5 (e.g., "3.2" or "-1.5"). Do 
         elif "very negative" in content_lower:
             return -4.5
         
-        logger.warning(f"Could not parse score from LLM response: {content}")
+        logger.warning(f"Could not parse score from LLM response: '{content}' (length: {len(content)})")
         return 0.0
     
     def _calculate_keyword_boost(self, headline: Headline) -> float:

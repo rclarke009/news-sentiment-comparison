@@ -105,6 +105,14 @@ class NewsDatabase:
                     doc["url"] = str(doc["url"])
                 documents.append(doc)
             
+            # Log sample scores before saving (verify they're not all 0)
+            if documents:
+                sample = documents[0]
+                logger.info(
+                    f"Saving headlines with scores - sample: final_score={sample.get('final_score')}, "
+                    f"uplift_score={sample.get('uplift_score')}, title='{sample.get('title', '')[:50]}...'"
+                )
+            
             # Insert documents
             result = collection.insert_many(documents)
             logger.info(f"Saved {len(result.inserted_ids)} headlines to database")

@@ -304,6 +304,15 @@ async def trigger_collection(
         # Run collection for today
         comparison = collector.collect_daily_news()
         
+        # Log collection results to diagnose scoring issues
+        logger.info(
+            f"Collection completed for {comparison.date}: "
+            f"conservative avg_uplift={comparison.conservative.get('avg_uplift', 0)}, "
+            f"total_headlines={comparison.conservative.get('total_headlines', 0)}, "
+            f"liberal avg_uplift={comparison.liberal.get('avg_uplift', 0)}, "
+            f"total_headlines={comparison.liberal.get('total_headlines', 0)}"
+        )
+        
         # Cleanup
         collector.close()
         

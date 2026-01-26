@@ -8,11 +8,6 @@ interface DailyComparisonProps {
 const DailyComparison: React.FC<DailyComparisonProps> = ({ comparison }) => {
   const { conservative, liberal } = comparison;
 
-  // #region agent log
-  (() => {
-    fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'DailyComparison.tsx:render', message: 'props received', data: { cAvg: conservative?.avg_uplift, cTotal: conservative?.total_headlines, lAvg: liberal?.avg_uplift, lTotal: liberal?.total_headlines }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H1' }) }).catch(() => {});
-  })();
-  // #endregion
 
   const ScoreBar = ({ score, side }: { score: number; side: 'conservative' | 'liberal' }) => {
     const percentage = ((score + 5) / 10) * 100; // Convert -5 to +5 scale to 0-100%

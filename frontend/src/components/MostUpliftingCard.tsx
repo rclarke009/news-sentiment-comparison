@@ -11,9 +11,6 @@ const MostUpliftingCard: React.FC<MostUpliftingCardProps> = ({ side, story }) =>
   const titleColor = side === 'conservative' ? 'text-red-700' : 'text-blue-700';
   const badgeColor = side === 'conservative' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800';
 
-  // #region agent log
-  fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'MostUpliftingCard.tsx:render', message: 'story null check', data: { side, storyNull: !story }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H2' }) }).catch(() => {});
-  // #endregion
 
   if (!story) {
     return (
