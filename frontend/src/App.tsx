@@ -21,32 +21,17 @@ function App() {
   }, [selectedDate]);
 
   const loadComparison = async (tryFallback = true) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:23',message:'loadComparison called',data:{selectedDate,tryFallback},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-    // #endregion
     try {
       setLoading(true);
       setError(null);
       setNoDataAvailable(false);
       const data = await apiService.getDate(selectedDate);
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:29',message:'getDate succeeded',data:{selectedDate,hasData:!!data},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-      // #endregion
       setComparison(data);
     } catch (err: any) {
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:31',message:'getDate failed',data:{selectedDate,status:err?.response?.status,detail:err?.response?.data?.detail,willTryFallback:err?.response?.status === 404 && tryFallback},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
-      // #endregion
       // If 404 and we haven't tried fallback yet, try to get most recent date
       if (err?.response?.status === 404 && tryFallback) {
-        // #region agent log
-        fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:33',message:'Attempting history fallback',data:{selectedDate},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
-        // #endregion
         try {
           const history = await apiService.getHistory(30);
-          // #region agent log
-          fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:35',message:'History fallback succeeded',data:{comparisonCount:history.comparisons?.length,hasComparisons:!!(history.comparisons && history.comparisons.length > 0)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
-          // #endregion
           if (history.comparisons && history.comparisons.length > 0) {
             // Use the most recent available date
             const mostRecent = history.comparisons[0];
@@ -55,21 +40,21 @@ function App() {
             return;
           }
         } catch (historyErr: any) {
-          // #region agent log
-          fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:43',message:'History fallback failed',data:{status:historyErr?.response?.status,detail:historyErr?.response?.data?.detail,message:historyErr?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
-          // #endregion
-          // History also failed, continue to show error
+          // History also failed (likely also 404 - no data), continue to show "no data" message
+          // Don't log this as an error since it's expected when there's no data
         }
       }
       
-      // No data available at all
+      // No data available at all - this is expected when the collector hasn't run yet
       if (err?.response?.status === 404) {
         setNoDataAvailable(true);
+        // Don't log 404s as errors - they're expected when there's no data
+      } else {
+        // Only log non-404 errors (network issues, server errors, etc.)
+        const errorMessage = err?.response?.data?.detail || err?.message || 'Failed to load comparison';
+        setError(errorMessage);
+        console.error('Error loading comparison:', err);
       }
-      
-      const errorMessage = err?.response?.data?.detail || err?.message || 'Failed to load comparison';
-      setError(errorMessage);
-      console.error('Error loading comparison:', err);
     } finally {
       setLoading(false);
     }
