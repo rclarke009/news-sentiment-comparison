@@ -15,13 +15,17 @@ const TrendChart: React.FC = () => {
     try {
       setLoading(true);
       const response: HistoryResponse = await apiService.getHistory(days);
-      
+
       const chartData = response.comparisons.map((comp) => ({
         date: comp.date,
         conservative: comp.conservative.avg_uplift,
         liberal: comp.liberal.avg_uplift,
       }));
-      
+
+      // #region agent log
+      fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'TrendChart.tsx:loadHistory', message: 'history result', data: { days, count: response?.comparisons?.length ?? 0, chartDataLen: chartData?.length ?? 0 }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H3' }) }).catch(() => {});
+      // #endregion
+
       setData(chartData.reverse()); // Show oldest to newest
     } catch (error: any) {
       // Don't log 404s as errors - they're expected when there's no data
@@ -29,6 +33,9 @@ const TrendChart: React.FC = () => {
         console.error('Error loading history:', error);
       }
       // Set empty data on error (including 404)
+      // #region agent log
+      fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'TrendChart.tsx:loadHistory-catch', message: 'history fetch error', data: { days, status: error?.response?.status }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H3' }) }).catch(() => {});
+      // #endregion
       setData([]);
     } finally {
       setLoading(false);

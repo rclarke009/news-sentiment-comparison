@@ -206,6 +206,15 @@ function App() {
 
   console.log("MYDEBUG → Rendering comparison for date:", comparison.date, "selectedDate:", selectedDate);
 
+  // #region agent log
+  (() => {
+    const c = comparison.conservative;
+    const l = comparison.liberal;
+    fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'App.tsx:render', message: 'comparison shape before dashboard', data: { date: comparison?.date, hasConservative: !!c, hasLiberal: !!l, cAvg: c?.avg_uplift, cTotal: c?.total_headlines, cMost: !!c?.most_uplifting, lAvg: l?.avg_uplift, lTotal: l?.total_headlines, lMost: !!l?.most_uplifting }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H1' }) }).catch(() => {});
+    fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'App.tsx:render', message: 'most_uplifting null check', data: { conservativeMostNull: !c?.most_uplifting, liberalMostNull: !l?.most_uplifting }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H2' }) }).catch(() => {});
+  })();
+  // #endregion
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header selectedDate={selectedDate} onDateChange={setSelectedDate} />
