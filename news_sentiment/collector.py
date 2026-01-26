@@ -2,7 +2,9 @@
 Main collection orchestration module.
 """
 
+import json
 import logging
+import time
 from datetime import datetime, date
 from typing import Optional
 from collections import Counter
@@ -18,6 +20,10 @@ from news_sentiment.sentiment_scorer import SentimentScorer
 from news_sentiment.database import NewsDatabase
 
 logger = logging.getLogger(__name__)
+
+# #region agent log
+DEBUG_LOG_PATH = "/Users/rebeccaclarke/Documents/Financial/Gigs/devops_software_engineering/conceptprojects/.cursor/debug.log"
+# #endregion
 
 
 class NewsCollector:
@@ -49,10 +55,28 @@ class NewsCollector:
         try:
             # Step 1: Fetch headlines
             logger.info("Fetching headlines from news sources...")
+            # #region agent log
+            try:
+                with open(DEBUG_LOG_PATH, "a") as f:
+                    f.write(json.dumps({"id": f"log_{int(time.time())}_collector_fetch_start", "timestamp": int(time.time() * 1000), "location": "collector.py:51", "message": "Collector starting fetch_all_headlines", "data": {"date_str": date_str}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "L"}) + "\n")
+            except: pass
+            # #endregion
             conservative_headlines, liberal_headlines = self.fetcher.fetch_all_headlines()
+            # #region agent log
+            try:
+                with open(DEBUG_LOG_PATH, "a") as f:
+                    f.write(json.dumps({"id": f"log_{int(time.time())}_collector_fetch_complete", "timestamp": int(time.time() * 1000), "location": "collector.py:53", "message": "Collector fetch_all_headlines complete", "data": {"conservative_count": len(conservative_headlines), "liberal_count": len(liberal_headlines)}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "M"}) + "\n")
+            except: pass
+            # #endregion
             
             if not conservative_headlines and not liberal_headlines:
                 logger.warning("No headlines fetched from any source")
+                # #region agent log
+                try:
+                    with open(DEBUG_LOG_PATH, "a") as f:
+                        f.write(json.dumps({"id": f"log_{int(time.time())}_no_headlines", "timestamp": int(time.time() * 1000), "location": "collector.py:55", "message": "No headlines fetched", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "N"}) + "\n")
+                except: pass
+                # #endregion
                 raise ValueError("No headlines available")
             
             # Step 2: Score headlines
@@ -89,6 +113,12 @@ class NewsCollector:
         
         except Exception as e:
             logger.error(f"Error during daily collection: {e}")
+            # #region agent log
+            try:
+                with open(DEBUG_LOG_PATH, "a") as f:
+                    f.write(json.dumps({"id": f"log_{int(time.time())}_collector_exception", "timestamp": int(time.time() * 1000), "location": "collector.py:90", "message": "Collector exception", "data": {"exception_type": type(e).__name__, "exception_message": str(e)}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "O"}) + "\n")
+            except: pass
+            # #endregion
             raise
     
     def _calculate_statistics(

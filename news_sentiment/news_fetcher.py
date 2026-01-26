@@ -2,6 +2,7 @@
 News fetching module using NewsAPI.org and RSS feeds.
 """
 
+import json
 import logging
 import time
 from datetime import datetime
@@ -15,6 +16,10 @@ from news_sentiment.models import Headline
 from news_sentiment.rss_fetcher import RSSFetcher
 
 logger = logging.getLogger(__name__)
+
+# #region agent log
+DEBUG_LOG_PATH = "/Users/rebeccaclarke/Documents/Financial/Gigs/devops_software_engineering/conceptprojects/.cursor/debug.log"
+# #endregion
 
 
 class NewsFetcher:
@@ -66,6 +71,13 @@ class NewsFetcher:
         # NewsAPI allows multiple sources in one request (comma-separated)
         sources_str = ",".join(sources)
         
+        # #region agent log
+        try:
+            with open(DEBUG_LOG_PATH, "a") as f:
+                f.write(json.dumps({"id": f"log_{int(time.time())}_fetch_start", "timestamp": int(time.time() * 1000), "location": "news_fetcher.py:69", "message": "Starting fetch_headlines", "data": {"political_side": political_side, "sources_count": len(sources), "page_size": page_size}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "A"}) + "\n")
+        except: pass
+        # #endregion
+        
         try:
             url = f"{self.config.news_api.base_url}/top-headlines"
             params = {
@@ -76,17 +88,59 @@ class NewsFetcher:
             
             logger.info(f"Fetching headlines from {len(sources)} {political_side} sources")
             
+            # #region agent log
+            request_start_time = time.time()
+            try:
+                with open(DEBUG_LOG_PATH, "a") as f:
+                    f.write(json.dumps({"id": f"log_{int(time.time())}_before_request", "timestamp": int(time.time() * 1000), "location": "news_fetcher.py:79", "message": "Before HTTP request", "data": {"url": url, "political_side": political_side, "sources": sources_str[:50]}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "B"}) + "\n")
+            except: pass
+            # #endregion
+            
             response = self.session.get(
                 url,
                 params=params,
                 timeout=self.config.news_api.timeout
             )
+            
+            # #region agent log
+            request_duration = time.time() - request_start_time
+            status_code = response.status_code
+            retry_after = response.headers.get("Retry-After", None)
+            x_ratelimit_limit = response.headers.get("X-RateLimit-Limit", None)
+            x_ratelimit_remaining = response.headers.get("X-RateLimit-Remaining", None)
+            try:
+                with open(DEBUG_LOG_PATH, "a") as f:
+                    f.write(json.dumps({"id": f"log_{int(time.time())}_after_request", "timestamp": int(time.time() * 1000), "location": "news_fetcher.py:84", "message": "After HTTP request", "data": {"status_code": status_code, "retry_after": retry_after, "x_ratelimit_limit": x_ratelimit_limit, "x_ratelimit_remaining": x_ratelimit_remaining, "request_duration": request_duration, "political_side": political_side}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "C"}) + "\n")
+            except: pass
+            # #endregion
+            
+            # #region agent log
+            if status_code == 429:
+                try:
+                    with open(DEBUG_LOG_PATH, "a") as f:
+                        f.write(json.dumps({"id": f"log_{int(time.time())}_rate_limit", "timestamp": int(time.time() * 1000), "location": "news_fetcher.py:84", "message": "429 Rate limit detected", "data": {"status_code": 429, "retry_after": retry_after, "response_headers": dict(response.headers), "political_side": political_side}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "D"}) + "\n")
+                except: pass
+            # #endregion
+            
             response.raise_for_status()
             
             data = response.json()
             
+            # #region agent log
+            try:
+                with open(DEBUG_LOG_PATH, "a") as f:
+                    f.write(json.dumps({"id": f"log_{int(time.time())}_response_data", "timestamp": int(time.time() * 1000), "location": "news_fetcher.py:86", "message": "Response data parsed", "data": {"status": data.get("status"), "articles_count": len(data.get("articles", [])), "political_side": political_side}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "E"}) + "\n")
+            except: pass
+            # #endregion
+            
             if data.get("status") != "ok":
                 logger.error(f"NewsAPI returned error: {data.get('message', 'Unknown error')}")
+                # #region agent log
+                try:
+                    with open(DEBUG_LOG_PATH, "a") as f:
+                        f.write(json.dumps({"id": f"log_{int(time.time())}_api_error", "timestamp": int(time.time() * 1000), "location": "news_fetcher.py:89", "message": "NewsAPI status not ok", "data": {"status": data.get("status"), "message": data.get("message"), "political_side": political_side}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "F"}) + "\n")
+                except: pass
+                # #endregion
                 return []
             
             articles = data.get("articles", [])
@@ -103,11 +157,30 @@ class NewsFetcher:
             
             # Rate limiting: NewsAPI free tier allows 100 requests/day
             # Be respectful and add a small delay
+            # #region agent log
+            try:
+                with open(DEBUG_LOG_PATH, "a") as f:
+                    f.write(json.dumps({"id": f"log_{int(time.time())}_before_delay", "timestamp": int(time.time() * 1000), "location": "news_fetcher.py:106", "message": "Before rate limit delay", "data": {"delay_seconds": 0.5, "political_side": political_side}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "G"}) + "\n")
+            except: pass
+            # #endregion
             time.sleep(0.5)
             
         except requests.exceptions.RequestException as e:
             logger.error(f"Error fetching headlines: {e}")
+            # #region agent log
+            try:
+                with open(DEBUG_LOG_PATH, "a") as f:
+                    f.write(json.dumps({"id": f"log_{int(time.time())}_request_exception", "timestamp": int(time.time() * 1000), "location": "news_fetcher.py:108", "message": "RequestException raised", "data": {"exception_type": type(e).__name__, "exception_message": str(e), "political_side": political_side}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "H"}) + "\n")
+            except: pass
+            # #endregion
             raise
+        
+        # #region agent log
+        try:
+            with open(DEBUG_LOG_PATH, "a") as f:
+                f.write(json.dumps({"id": f"log_{int(time.time())}_fetch_complete", "timestamp": int(time.time() * 1000), "location": "news_fetcher.py:112", "message": "fetch_headlines complete", "data": {"headlines_count": len(all_headlines), "political_side": political_side}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "I"}) + "\n")
+        except: pass
+        # #endregion
         
         logger.info(f"Successfully fetched {len(all_headlines)} headlines for {political_side} side")
         return all_headlines
@@ -195,12 +268,26 @@ class NewsFetcher:
         config = get_config()
         cap = config.sources.headlines_per_side
 
+        # #region agent log
+        try:
+            with open(DEBUG_LOG_PATH, "a") as f:
+                f.write(json.dumps({"id": f"log_{int(time.time())}_fetch_all_start", "timestamp": int(time.time() * 1000), "location": "news_fetcher.py:195", "message": "Starting fetch_all_headlines", "data": {"conservative_sources_count": len(config.sources.conservative), "liberal_sources_count": len(config.sources.liberal)}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "J"}) + "\n")
+        except: pass
+        # #endregion
+
         # Fetch from NewsAPI
         conservative_headlines = self.fetch_headlines(
             sources=config.sources.conservative,
             political_side="conservative",
             page_size=cap
         )
+
+        # #region agent log
+        try:
+            with open(DEBUG_LOG_PATH, "a") as f:
+                f.write(json.dumps({"id": f"log_{int(time.time())}_between_fetches", "timestamp": int(time.time() * 1000), "location": "news_fetcher.py:205", "message": "Between conservative and liberal fetches", "data": {"conservative_count": len(conservative_headlines)}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "K"}) + "\n")
+        except: pass
+        # #endregion
 
         liberal_headlines = self.fetch_headlines(
             sources=config.sources.liberal,

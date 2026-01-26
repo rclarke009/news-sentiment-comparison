@@ -147,6 +147,23 @@ python scripts/run_collector.py
 - Groq: Sign up at https://console.groq.com (free tier available)
 - OpenAI: Sign up at https://platform.openai.com
 
+### Checking Render Logs (Production Issues)
+
+If you're experiencing issues in production (e.g., all scores are 0, collection failures), **always check Render logs first**:
+
+1. **Access Render Logs:**
+   - Go to [Render Dashboard](https://dashboard.render.com) → Your service → **Logs** tab
+
+2. **What to Look For:**
+   - **API Key Errors**: `401`, `AuthenticationError`, or `Incorrect API key provided` → Update the key in Render Environment
+   - **Scoring Errors**: `Error scoring headline` or `LLM API error` → Check API key validity
+   - **Collection Results**: `Collection completed for` shows `avg_uplift` (should be non-zero)
+   - **Save Verification**: `Saving headlines with scores - sample: final_score=...` confirms scores before saving
+
+3. **Common Fixes:**
+   - Invalid API key → Update `OPENAI_API_KEY` in Render with the **full key** (no truncation)
+   - All scores zero → Check logs for scoring errors, then fix API key and redeploy
+
 ### Frontend Can't Connect to API
 - Make sure API is running on port 8000
 - Check `vite.config.ts` proxy configuration

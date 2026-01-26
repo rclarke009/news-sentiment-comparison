@@ -436,6 +436,40 @@ mongosh mongodb://localhost:27017
 - Groq: Sign up at https://console.groq.com (free tier available)
 - OpenAI: Sign up at https://platform.openai.com
 
+### Checking Render Logs (Production Issues)
+
+If you're experiencing issues in production (e.g., all scores are 0, "No uplifting story found", collection failures), **always check Render logs first**:
+
+1. **Access Render Logs:**
+   - Go to [Render Dashboard](https://dashboard.render.com)
+   - Select your service (e.g., `news-sentiment-api` or `news-sentiment-collector`)
+   - Click on the **Logs** tab
+   - Scroll to see recent log entries
+
+2. **What to Look For:**
+   - **API Key Errors**: Look for `401`, `AuthenticationError`, or `Incorrect API key provided`
+     - If you see this, your `OPENAI_API_KEY` or `GROQ_API_KEY` is invalid/truncated
+     - Fix: Go to Render → Environment → Update the key (ensure it's the full key, no spaces/line breaks)
+   - **Scoring Errors**: Look for `Error scoring headline` or `LLM API error`
+     - These indicate why scoring failed (API key, network, rate limits)
+   - **Collection Results**: Look for `Collection completed for` log entries
+     - Shows `avg_uplift` values (should be non-zero if scoring worked)
+   - **Save Verification**: Look for `Saving headlines with scores - sample: final_score=...`
+     - Confirms scores are calculated before saving to MongoDB
+
+3. **Common Issues Found in Logs:**
+   - **Invalid API Key**: `openai.AuthenticationError: Error code: 401 - Incorrect API key provided`
+     - **Solution**: Update `OPENAI_API_KEY` in Render environment variables with the full key
+   - **All Scores Zero**: If `avg_uplift: 0.0` in collection results, check for scoring errors in logs
+   - **500 Errors**: Check logs for stack traces showing conversion errors or missing data
+
+4. **After Fixing Issues:**
+   - Redeploy the affected service(s) in Render
+   - Trigger a new collection (via `/collect` endpoint or wait for cron)
+   - Check logs again to verify the fix worked
+
+**Remember**: Render logs are your primary debugging tool for production issues. Always check them before assuming the problem is elsewhere.
+
 ### Rate Limiting
 
 NewsAPI free tier allows 100 requests/day. The collector respects rate limits with delays between requests.
