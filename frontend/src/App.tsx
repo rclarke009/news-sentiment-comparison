@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
 import { apiService, DailyComparison } from './services/api';
 import DailyComparisonView from './components/DailyComparison';
 import Header from './components/Header';
@@ -11,8 +10,9 @@ function App() {
   const [comparison, setComparison] = useState<DailyComparison | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Use UTC date to match backend (Render servers use UTC)
   const [selectedDate, setSelectedDate] = useState<string>(
-    format(new Date(), 'yyyy-MM-dd')
+    new Date().toISOString().split('T')[0]
   );
   const [noDataAvailable, setNoDataAvailable] = useState(false);
 
