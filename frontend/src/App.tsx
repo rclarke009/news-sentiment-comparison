@@ -63,8 +63,10 @@ function App() {
           if (history.comparisons && history.comparisons.length > 0) {
             // Use the most recent available date
             const mostRecent = history.comparisons[0];
+            console.log("MYDEBUG → Fallback found data for:", mostRecent.date, "updating selectedDate");
             setComparison(mostRecent);
-            setError(`No data for ${selectedDate}. Showing most recent available: ${mostRecent.date}`);
+            setSelectedDate(mostRecent.date); // Update selectedDate to match the found data
+            setError(null); // Clear error since we found data
             return;
           }
         } catch (historyErr: any) {
@@ -161,8 +163,11 @@ function App() {
   }
 
   if (!comparison) {
+    console.log("MYDEBUG → No comparison to render, selectedDate:", selectedDate);
     return null;
   }
+
+  console.log("MYDEBUG → Rendering comparison for date:", comparison.date, "selectedDate:", selectedDate);
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -22,7 +22,11 @@ const Header: React.FC<HeaderProps> = ({ selectedDate, onDateChange }) => {
             <input
               type="date"
               value={selectedDate}
-              onChange={(e) => onDateChange(e.target.value)}
+              onChange={(e) => {
+                const newDate = e.target.value;
+                console.log("MYDEBUG → Date picker changed:", newDate, "from", selectedDate);
+                onDateChange(newDate);
+              }}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
