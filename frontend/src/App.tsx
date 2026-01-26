@@ -14,35 +14,25 @@ function App() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [noDataAvailable, setNoDataAvailable] = useState(false);
 
-  // On initial load, get today's data or most recent available
+  // On initial load, get the most recent available date (avoids timezone issues)
   useEffect(() => {
     const loadInitialData = async () => {
       try {
         setLoading(true);
-        // Try to get today's data first
-        const todayData = await apiService.getToday();
-        setComparison(todayData);
-        setSelectedDate(todayData.date);
-        console.log("MYDEBUG → Loaded today's data:", todayData.date);
-      } catch (err: any) {
-        // If today doesn't exist, get most recent available
-        if (err?.response?.status === 404) {
-          try {
-            const history = await apiService.getHistory(30);
-            if (history.comparisons && history.comparisons.length > 0) {
-              const mostRecent = history.comparisons[0];
-              setComparison(mostRecent);
-              setSelectedDate(mostRecent.date);
-              console.log("MYDEBUG → Today not available, using most recent:", mostRecent.date);
-            } else {
-              setNoDataAvailable(true);
-            }
-          } catch (historyErr: any) {
-            setNoDataAvailable(true);
-          }
+        // Always get the most recent available date to avoid timezone mismatches
+        // This ensures we show the latest data that actually exists, not a future date
+        const history = await apiService.getHistory(30);
+        if (history.comparisons && history.comparisons.length > 0) {
+          const mostRecent = history.comparisons[0];
+          setComparison(mostRecent);
+          setSelectedDate(mostRecent.date);
+          console.log("MYDEBUG → Loaded most recent available date:", mostRecent.date);
         } else {
-          setError(err?.response?.data?.detail || err?.message || 'Failed to load data');
+          setNoDataAvailable(true);
         }
+      } catch (err: any) {
+        setNoDataAvailable(true);
+        setError(err?.response?.data?.detail || err?.message || 'Failed to load data');
       } finally {
         setLoading(false);
       }
