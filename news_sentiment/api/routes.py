@@ -91,13 +91,14 @@ async def get_today():
         # Use UTC date consistently (Render servers use UTC)
         today = datetime.utcnow().date().isoformat()
         comparison = db.get_daily_comparison(today)
-        
+
         if not comparison:
+            logger.info("No comparison for today (%s)", today)
             raise HTTPException(
                 status_code=404,
                 detail=f"No comparison found for today ({today})"
             )
-        
+
         return _convert_comparison_to_response(comparison)
     except HTTPException:
         raise
@@ -121,13 +122,14 @@ async def get_date(date_str: str):
     try:
         db = get_db()
         comparison = db.get_daily_comparison(date_str)
-        
+
         if not comparison:
+            logger.info("No comparison for date %s", date_str)
             raise HTTPException(
                 status_code=404,
                 detail=f"No comparison found for date {date_str}"
             )
-        
+
         return _convert_comparison_to_response(comparison)
     except HTTPException:
         raise
@@ -145,13 +147,11 @@ async def get_history(days: int = Query(7, ge=1, le=365)):
     try:
         db = get_db()
         comparisons = db.get_recent_comparisons(days)
-        
+
         if not comparisons:
-            raise HTTPException(
-                status_code=404,
-                detail="No historical comparisons found"
-            )
-        
+            logger.info("No historical comparisons (days=%d)", days)
+            return HistoryResponse(comparisons=[], days=0)
+
         return HistoryResponse(
             comparisons=[_convert_comparison_to_response(c) for c in comparisons],
             days=len(comparisons)

@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { format } from 'date-fns';
 import { apiService, DailyComparison } from './services/api';
 import DailyComparisonView from './components/DailyComparison';
 import Header from './components/Header';
@@ -11,40 +10,45 @@ function App() {
   const [comparison, setComparison] = useState<DailyComparison | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Start with null - we'll load local "today" or most recent on mount
+  // Start with null - we'll load /today (UTC) or most recent on mount
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [noDataAvailable, setNoDataAvailable] = useState(false);
   const [fallbackMessage, setFallbackMessage] = useState<string | null>(null);
 
   const skipNextSelectedDateEffect = useRef(false);
 
-  // On initial load: prefer user's local "today", then fall back to most recent
+  // On initial load: request /today (server UTC), then fall back to most recent
   useEffect(() => {
     const loadInitialData = async () => {
       try {
         setLoading(true);
         setError(null);
         setFallbackMessage(null);
-        const localToday = format(new Date(), 'yyyy-MM-dd');
+        console.log('MYDEBUG → Requesting /today');
         try {
-          const data = await apiService.getDate(localToday);
+          const data = await apiService.getToday();
+          console.log('MYDEBUG → Received /today:', data?.date, 'hasData:', !!data);
           setComparison(data);
           skipNextSelectedDateEffect.current = true;
           setSelectedDate(data.date);
         } catch (err: any) {
           if (err?.response?.status === 404) {
+            console.log('MYDEBUG → /today 404, trying history fallback');
             try {
               const history = await apiService.getHistory(30);
               if (history.comparisons && history.comparisons.length > 0) {
                 const mostRecent = history.comparisons[0];
+                console.log('MYDEBUG → History fallback: latest', mostRecent.date);
                 setComparison(mostRecent);
                 setFallbackMessage(`Showing latest available: ${mostRecent.date}`);
                 skipNextSelectedDateEffect.current = true;
                 setSelectedDate(mostRecent.date);
               } else {
+                console.log('MYDEBUG → History empty');
                 setNoDataAvailable(true);
               }
             } catch (historyErr: any) {
+              console.log('MYDEBUG → History fallback failed:', historyErr?.response?.status);
               setNoDataAvailable(true);
             }
           } else {
@@ -106,15 +110,15 @@ function App() {
             return;
           }
         } catch (historyErr: any) {
+          console.log('MYDEBUG → History fallback failed:', historyErr?.response?.status);
           // History also failed (likely also 404 - no data), continue to show "no data" message
-          // Don't log this as an error since it's expected when there's no data
         }
       }
-      
-      // No data available at all - this is expected when the collector hasn't run yet
+
+      // No data available - selected date 404 and (if tried) history fallback failed
       if (err?.response?.status === 404) {
         setNoDataAvailable(true);
-        // Don't log 404s as errors - they're expected when there's no data
+        setComparison(null); // Clear stale comparison so we show "No Data Available" screen
       } else {
         // Only log non-404 errors (network issues, server errors, etc.)
         const errorMessage = err?.response?.data?.detail || err?.message || 'Failed to load comparison';
