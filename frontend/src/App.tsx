@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { apiService, DailyComparison } from './services/api';
 import DailyComparisonView from './components/DailyComparison';
 import Header from './components/Header';
@@ -10,35 +10,69 @@ function App() {
   const [comparison, setComparison] = useState<DailyComparison | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Use UTC date to match backend (Render servers use UTC)
-  const [selectedDate, setSelectedDate] = useState<string>(() => {
-    const utcDate = new Date().toISOString().split('T')[0];
-    console.log("MYDEBUG → Initial selectedDate (UTC):", utcDate);
-    return utcDate;
-  });
+  // Start with null - we'll load the most recent available date on mount
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [noDataAvailable, setNoDataAvailable] = useState(false);
 
+  // On initial load, get today's data or most recent available
   useEffect(() => {
-    loadComparison();
+    const loadInitialData = async () => {
+      try {
+        setLoading(true);
+        // Try to get today's data first
+        const todayData = await apiService.getToday();
+        setComparison(todayData);
+        setSelectedDate(todayData.date);
+        console.log("MYDEBUG → Loaded today's data:", todayData.date);
+      } catch (err: any) {
+        // If today doesn't exist, get most recent available
+        if (err?.response?.status === 404) {
+          try {
+            const history = await apiService.getHistory(30);
+            if (history.comparisons && history.comparisons.length > 0) {
+              const mostRecent = history.comparisons[0];
+              setComparison(mostRecent);
+              setSelectedDate(mostRecent.date);
+              console.log("MYDEBUG → Today not available, using most recent:", mostRecent.date);
+            } else {
+              setNoDataAvailable(true);
+            }
+          } catch (historyErr: any) {
+            setNoDataAvailable(true);
+          }
+        } else {
+          setError(err?.response?.data?.detail || err?.message || 'Failed to load data');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadInitialData();
+  }, []); // Only run on mount
+
+  // When selectedDate changes (user picks a date manually), load that date
+  // Note: We use a ref to skip the initial set from loadInitialData
+  const isInitialLoad = useRef(true);
+  useEffect(() => {
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false;
+      return; // Skip on initial load (handled by loadInitialData)
+    }
+    if (selectedDate) {
+      loadComparison();
+    }
   }, [selectedDate]);
 
   const loadComparison = async (tryFallback = true) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:23',message:'loadComparison called',data:{selectedDate, tryFallback},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B,C'})}).catch(()=>{});
-    // #endregion
+    if (!selectedDate) return; // Don't load if no date selected
+    
     try {
       setLoading(true);
       setError(null);
       setNoDataAvailable(false);
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:28',message:'Calling apiService.getDate',data:{selectedDate, dateType:typeof selectedDate},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B'})}).catch(()=>{});
-      // #endregion
       console.log("MYDEBUG → Requesting date:", selectedDate);
       const data = await apiService.getDate(selectedDate);
       console.log("MYDEBUG → Received data:", data?.date, "hasData:", !!data);
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:29',message:'API call succeeded',data:{receivedDate:data?.date, hasData:!!data},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       setComparison(data);
     } catch (err: any) {
       // #region agent log

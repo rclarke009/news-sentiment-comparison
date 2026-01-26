@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface HeaderProps {
-  selectedDate: string;
+  selectedDate: string | null;
   onDateChange: (date: string) => void;
 }
 
@@ -21,7 +21,7 @@ const Header: React.FC<HeaderProps> = ({ selectedDate, onDateChange }) => {
           <div>
             <input
               type="date"
-              value={selectedDate}
+              value={selectedDate || ''}
               onChange={(e) => {
                 const newDate = e.target.value;
                 console.log("MYDEBUG → Date picker changed:", newDate, "from", selectedDate);
