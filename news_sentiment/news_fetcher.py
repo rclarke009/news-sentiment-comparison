@@ -35,11 +35,13 @@ class NewsFetcher:
         """Create a requests session with retry logic."""
         session = requests.Session()
         
-        # Retry strategy
+        # Retry strategy - DO NOT retry on 429 errors (rate limits)
+        # 429 errors are handled explicitly in fetch_headlines to avoid wasting API quota
+        # Only retry on transient server errors (500, 502, 503, 504)
         retry_strategy = Retry(
             total=self.config.news_api.max_retries,
-            backoff_factor=1,
-            status_forcelist=[429, 500, 502, 503, 504],
+            backoff_factor=2,
+            status_forcelist=[500, 502, 503, 504],  # Removed 429 - we handle it explicitly
             allowed_methods=["GET"]
         )
         
@@ -118,9 +120,39 @@ class NewsFetcher:
             if status_code == 429:
                 try:
                     with open(DEBUG_LOG_PATH, "a") as f:
-                        f.write(json.dumps({"id": f"log_{int(time.time())}_rate_limit", "timestamp": int(time.time() * 1000), "location": "news_fetcher.py:84", "message": "429 Rate limit detected", "data": {"status_code": 429, "retry_after": retry_after, "response_headers": dict(response.headers), "political_side": political_side}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "D"}) + "\n")
+                        f.write(json.dumps({"id": f"log_{int(time.time())}_rate_limit", "timestamp": int(time.time() * 1000), "location": "news_fetcher.py:117", "message": "429 Rate limit detected", "data": {"status_code": 429, "retry_after": retry_after, "response_headers": dict(response.headers), "political_side": political_side}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "D"}) + "\n")
                 except: pass
             # #endregion
+            
+            # Handle 429 rate limit errors before raise_for_status
+            if status_code == 429:
+                retry_after_seconds = None
+                if retry_after:
+                    try:
+                        retry_after_seconds = int(retry_after)
+                    except (ValueError, TypeError):
+                        pass
+                
+                error_msg = f"NewsAPI rate limit exceeded (429). "
+                if retry_after_seconds:
+                    error_msg += f"Retry after {retry_after_seconds} seconds. "
+                else:
+                    error_msg += "This may be due to the daily limit (100 requests/day on free tier). "
+                error_msg += f"Political side: {political_side}"
+                
+                logger.error(error_msg)
+                # #region agent log
+                try:
+                    with open(DEBUG_LOG_PATH, "a") as f:
+                        f.write(json.dumps({"id": f"log_{int(time.time())}_rate_limit_error", "timestamp": int(time.time() * 1000), "location": "news_fetcher.py:135", "message": "Raising rate limit error", "data": {"error_msg": error_msg, "retry_after_seconds": retry_after_seconds}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "P"}) + "\n")
+                except: pass
+                # #endregion
+                
+                # Raise a more informative exception
+                raise requests.exceptions.HTTPError(
+                    f"{error_msg}",
+                    response=response
+                )
             
             response.raise_for_status()
             

@@ -8,6 +8,7 @@ from datetime import date, datetime
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, Header
 from fastapi.responses import JSONResponse
+import requests
 
 from news_sentiment.config import get_config
 from news_sentiment.database import NewsDatabase
@@ -329,6 +330,20 @@ async def trigger_collection(
                 "total_headlines": comparison.liberal.get("total_headlines", 0)
             }
         }
+    except requests.exceptions.HTTPError as e:
+        # Check if it's a 429 rate limit error
+        if hasattr(e, 'response') and e.response is not None and e.response.status_code == 429:
+            logger.error(f"NewsAPI rate limit exceeded during collection: {e}")
+            raise HTTPException(
+                status_code=429,
+                detail=f"NewsAPI rate limit exceeded. {str(e)}. This may be due to the daily limit (100 requests/day on free tier). Please try again later."
+            )
+        # Re-raise other HTTP errors as 500
+        logger.error(f"HTTP error during manual collection: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Collection failed: {str(e)}"
+        )
     except Exception as e:
         logger.error(f"Error during manual collection: {e}", exc_info=True)
         raise HTTPException(

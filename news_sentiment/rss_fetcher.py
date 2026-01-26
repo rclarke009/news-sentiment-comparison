@@ -29,11 +29,13 @@ class RSSFetcher:
         """Create a requests session with retry logic."""
         session = requests.Session()
         
-        # Retry strategy
+        # Retry strategy - DO NOT retry on 429 errors (rate limits)
+        # 429 errors should be handled explicitly to avoid wasting quota
+        # Only retry on transient server errors (500, 502, 503, 504)
         retry_strategy = Retry(
             total=3,
             backoff_factor=1,
-            status_forcelist=[429, 500, 502, 503, 504],
+            status_forcelist=[500, 502, 503, 504],  # Removed 429 - handle explicitly
             allowed_methods=["GET"]
         )
         
