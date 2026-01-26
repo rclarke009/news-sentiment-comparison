@@ -2,14 +2,16 @@
 API route handlers.
 """
 
+import os
 import logging
 from datetime import date, datetime
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Header
 from fastapi.responses import JSONResponse
 
 from news_sentiment.config import get_config
 from news_sentiment.database import NewsDatabase
+from news_sentiment.collector import NewsCollector
 from news_sentiment.models import DailyComparison
 from news_sentiment.api.schemas import (
     DailyComparisonResponse,
@@ -263,6 +265,64 @@ async def get_stats(days: int = Query(30, ge=1, le=365)):
         raise HTTPException(
             status_code=500,
             detail="Internal server error while fetching statistics"
+        )
+
+
+@router.post("/collect", tags=["collection"])
+async def trigger_collection(
+    x_cron_secret: Optional[str] = Header(None, alias="X-Cron-Secret")
+):
+    """
+    Trigger news collection manually (for use with external cron services).
+    
+    Requires X-Cron-Secret header matching CRON_SECRET_KEY environment variable.
+    This endpoint is protected to prevent unauthorized collection triggers.
+    """
+    expected_secret = os.getenv("CRON_SECRET_KEY")
+    
+    # Check authentication
+    if not expected_secret:
+        logger.warning("CRON_SECRET_KEY not set - endpoint is disabled for security")
+        raise HTTPException(
+            status_code=503,
+            detail="Collection endpoint is not configured"
+        )
+    
+    if not x_cron_secret or x_cron_secret != expected_secret:
+        logger.warning(f"Unauthorized collection attempt from IP")
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or missing X-Cron-Secret header"
+        )
+    
+    try:
+        logger.info("Manual collection triggered via API endpoint")
+        collector = NewsCollector()
+        
+        # Run collection for today
+        comparison = collector.collect_daily_news()
+        
+        # Cleanup
+        collector.close()
+        
+        return {
+            "status": "success",
+            "message": "Collection completed successfully",
+            "date": comparison.date,
+            "conservative": {
+                "avg_uplift": comparison.conservative.get("avg_uplift", 0),
+                "total_headlines": comparison.conservative.get("total_headlines", 0)
+            },
+            "liberal": {
+                "avg_uplift": comparison.liberal.get("avg_uplift", 0),
+                "total_headlines": comparison.liberal.get("total_headlines", 0)
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error during manual collection: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Collection failed: {str(e)}"
         )
 
 

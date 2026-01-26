@@ -224,6 +224,8 @@ The repo includes a `render.yaml` Blueprint that deploys the **API**, **frontend
    - **news-sentiment-api** — FastAPI at `https://news-sentiment-api.onrender.com`
    - **news-sentiment-frontend** — React app at `https://news-sentiment-frontend.onrender.com`
    - **news-sentiment-collector** — Cron job (daily 10:00 AM UTC)
+   
+   **Note:** If you're on Render's free tier, the cron job service won't work (jobs require Starter plan). See "Using cron-job.org (Free Tier Alternative)" below.
 
 5. **Run the DB setup once:**  
    Locally, set `MONGODB_URI` to your Atlas URL and run:
@@ -231,6 +233,68 @@ The repo includes a `render.yaml` Blueprint that deploys the **API**, **frontend
    python scripts/setup_db.py
    ```
    Then trigger a manual run of the collector in Render, or wait for the first scheduled run.
+
+### Using cron-job.org (Free Tier Alternative)
+
+If you're using Render's free tier (which doesn't support cron jobs), use cron-job.org to trigger collection:
+
+#### Step 1: Generate a Secret Key
+
+Generate a secure random secret key:
+
+```bash
+# macOS/Linux
+openssl rand -hex 32
+
+# Or Python
+python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+#### Step 2: Add Secret to Render
+
+1. Go to Render dashboard → Your API service → Environment
+2. Add environment variable:
+   - **Key**: `CRON_SECRET_KEY`
+   - **Value**: Your generated secret key
+3. Save and redeploy
+
+#### Step 3: Create cron-job.org Account
+
+1. Sign up at https://cron-job.org (free)
+2. Verify your email
+
+#### Step 4: Create Cron Job
+
+1. Click **"Create cronjob"**
+2. Configure:
+   - **Title**: `News Sentiment Collection`
+   - **Address (URL)**: `https://your-api-url.onrender.com/api/v1/collect`
+     - Replace with your actual Render API URL
+   - **Request method**: `POST`
+   - **Request headers**: Add header:
+     - **Name**: `X-Cron-Secret`
+     - **Value**: Your `CRON_SECRET_KEY` value
+   - **Schedule**: 
+     - Daily at 10 AM UTC: `0 10 * * *`
+     - Daily at 2 AM UTC (9 PM EST): `0 2 * * *`
+   - **Activate cronjob**: ✓
+3. Click **"Create cronjob"**
+
+#### Step 5: Test
+
+Test the endpoint manually:
+
+```bash
+curl -X POST https://your-api-url.onrender.com/api/v1/collect \
+  -H "X-Cron-Secret: your_secret_key"
+```
+
+You should see a JSON response with collection results.
+
+#### Monitor
+
+- **cron-job.org**: Check "Executions" tab for run history
+- **Render**: Check API service logs for collection activity
 
 **Custom domains:** In each service’s Render dashboard, add your domain under **Settings → Custom Domains**. Update `CORS_ORIGINS` on the API to include your frontend URL.
 

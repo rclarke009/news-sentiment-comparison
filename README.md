@@ -328,10 +328,82 @@ If the cron job doesn't run:
 
 For production deployments, set up the cron job on your cloud host:
 
-- **Render**: Use "Cron Job" service type, set command to run `python scripts/run_collector.py`
+- **Render**: Use "Cron Job" service type, set command to run `python scripts/run_collector.py` (requires Starter plan or higher - free tier doesn't support cron jobs)
 - **Railway**: Use scheduled tasks or background workers
 - **Fly.io**: Use scheduled tasks or systemd timers
-- **External cron services**: Use cron-job.org or EasyCron to call an API endpoint that triggers collection
+- **External cron services**: Use cron-job.org or EasyCron to call an API endpoint that triggers collection (works on free tier - see setup below)
+
+### Setting Up cron-job.org (Free Alternative)
+
+If you're using Render's free tier (which doesn't support cron jobs), you can use an external service like cron-job.org to trigger collection:
+
+#### Step 1: Generate a Secret Key
+
+Generate a secure random secret key for authentication:
+
+```bash
+# On macOS/Linux
+openssl rand -hex 32
+
+# Or use Python
+python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+#### Step 2: Set Environment Variable
+
+Add the secret key to your Render environment variables:
+
+1. Go to your Render dashboard → Your API service → Environment
+2. Add a new environment variable:
+   - **Key**: `CRON_SECRET_KEY`
+   - **Value**: The secret key you generated (e.g., `a1b2c3d4e5f6...`)
+3. Save and redeploy your service
+
+#### Step 3: Create Account on cron-job.org
+
+1. Sign up at https://cron-job.org (free account available)
+2. Verify your email address
+
+#### Step 4: Create a New Cron Job
+
+1. Click **"Create cronjob"** in your dashboard
+2. Configure the job:
+   - **Title**: `News Sentiment Collection` (or any name you prefer)
+   - **Address (URL)**: `https://your-api-url.onrender.com/api/v1/collect`
+     - Replace `your-api-url` with your actual Render API URL
+   - **Request method**: `POST`
+   - **Request headers**: Click "Add header" and add:
+     - **Name**: `X-Cron-Secret`
+     - **Value**: Your `CRON_SECRET_KEY` value (the same one you set in Render)
+   - **Schedule**: 
+     - For daily at 10 AM UTC: `0 10 * * *`
+     - For daily at 2 AM UTC (9 PM EST): `0 2 * * *`
+     - Or use the visual scheduler to pick a time
+   - **Activate cronjob**: Check this box
+3. Click **"Create cronjob"**
+
+#### Step 5: Test the Endpoint
+
+Before activating, test that your endpoint works:
+
+```bash
+# Replace with your actual values
+curl -X POST https://your-api-url.onrender.com/api/v1/collect \
+  -H "X-Cron-Secret: your_secret_key_here"
+```
+
+You should get a JSON response with collection results.
+
+#### Step 6: Monitor Logs
+
+- **cron-job.org**: Check the "Executions" tab to see when the job runs and if it succeeded
+- **Render**: Check your API service logs to see collection activity
+
+#### Troubleshooting cron-job.org
+
+- **401 Unauthorized**: Check that `CRON_SECRET_KEY` in Render matches the header value in cron-job.org
+- **500 Error**: Check Render logs for collection errors (API keys, MongoDB connection, etc.)
+- **Job not running**: Verify the schedule is correct and the job is activated in cron-job.org
 
 ### Manual Collection
 
