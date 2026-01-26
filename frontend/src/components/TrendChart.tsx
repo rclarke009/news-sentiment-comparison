@@ -23,8 +23,13 @@ const TrendChart: React.FC = () => {
       }));
       
       setData(chartData.reverse()); // Show oldest to newest
-    } catch (error) {
-      console.error('Error loading history:', error);
+    } catch (error: any) {
+      // Don't log 404s as errors - they're expected when there's no data
+      if (error?.response?.status !== 404) {
+        console.error('Error loading history:', error);
+      }
+      // Set empty data on error (including 404)
+      setData([]);
     } finally {
       setLoading(false);
     }
