@@ -3,8 +3,10 @@ FastAPI application main file.
 """
 
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 
 from news_sentiment.config import get_config
 from news_sentiment.api import routes
@@ -30,6 +32,19 @@ app.add_middleware(
 
 # Include routers
 app.include_router(routes.router, prefix="/api/v1")
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Global exception handler to ensure all errors return proper JSON responses.
+    
+    The CORS middleware will automatically add CORS headers to this response.
+    """
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Internal server error"}
+    )
 
 
 @app.get("/")
