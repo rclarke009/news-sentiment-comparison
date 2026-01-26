@@ -111,6 +111,13 @@ async def get_today():
 @router.get("/date/{date_str}", response_model=DailyComparisonResponse, tags=["comparisons"])
 async def get_date(date_str: str):
     """Get comparison for a specific date (YYYY-MM-DD)."""
+    # #region agent log
+    import json
+    try:
+        with open('/Users/rebeccaclarke/Documents/Financial/Gigs/devops_software_engineering/conceptprojects/.cursor/debug.log', 'a') as f:
+            f.write(json.dumps({"location":"routes.py:112","message":"get_date endpoint called","data":{"date_str":date_str,"date_type":type(date_str).__name__},"timestamp":int(datetime.now().timestamp()*1000),"sessionId":"debug-session","runId":"run1","hypothesisId":"A,B,C,D"}) + '\n')
+    except: pass
+    # #endregion
     try:
         # Validate date format
         datetime.strptime(date_str, "%Y-%m-%d")
@@ -119,8 +126,20 @@ async def get_date(date_str: str):
     
     try:
         db = get_db()
+        # #region agent log
+        try:
+            with open('/Users/rebeccaclarke/Documents/Financial/Gigs/devops_software_engineering/conceptprojects/.cursor/debug.log', 'a') as f:
+                f.write(json.dumps({"location":"routes.py:122","message":"Calling get_daily_comparison","data":{"date_str":date_str},"timestamp":int(datetime.now().timestamp()*1000),"sessionId":"debug-session","runId":"run1","hypothesisId":"A,B,C,D"}) + '\n')
+        except: pass
+        # #endregion
         comparison = db.get_daily_comparison(date_str)
         
+        # #region agent log
+        try:
+            with open('/Users/rebeccaclarke/Documents/Financial/Gigs/devops_software_engineering/conceptprojects/.cursor/debug.log', 'a') as f:
+                f.write(json.dumps({"location":"routes.py:123","message":"get_daily_comparison result","data":{"date_str":date_str,"found":comparison is not None,"comparison_date":comparison.date if comparison else None},"timestamp":int(datetime.now().timestamp()*1000),"sessionId":"debug-session","runId":"run1","hypothesisId":"A,B,C,D"}) + '\n')
+        except: pass
+        # #endregion
         if not comparison:
             raise HTTPException(
                 status_code=404,

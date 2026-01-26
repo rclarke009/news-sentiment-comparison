@@ -11,9 +11,11 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // Use UTC date to match backend (Render servers use UTC)
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
-  );
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const utcDate = new Date().toISOString().split('T')[0];
+    console.log("MYDEBUG → Initial selectedDate (UTC):", utcDate);
+    return utcDate;
+  });
   const [noDataAvailable, setNoDataAvailable] = useState(false);
 
   useEffect(() => {
@@ -21,17 +23,43 @@ function App() {
   }, [selectedDate]);
 
   const loadComparison = async (tryFallback = true) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:23',message:'loadComparison called',data:{selectedDate, tryFallback},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B,C'})}).catch(()=>{});
+    // #endregion
     try {
       setLoading(true);
       setError(null);
       setNoDataAvailable(false);
+      // #region agent log
+      fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:28',message:'Calling apiService.getDate',data:{selectedDate, dateType:typeof selectedDate},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B'})}).catch(()=>{});
+      // #endregion
+      console.log("MYDEBUG → Requesting date:", selectedDate);
       const data = await apiService.getDate(selectedDate);
+      console.log("MYDEBUG → Received data:", data?.date, "hasData:", !!data);
+      // #region agent log
+      fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:29',message:'API call succeeded',data:{receivedDate:data?.date, hasData:!!data},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       setComparison(data);
     } catch (err: any) {
+      // #region agent log
+      fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:30',message:'API call failed',data:{status:err?.response?.status, statusText:err?.response?.statusText, detail:err?.response?.data?.detail, message:err?.message, selectedDate},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B,C'})}).catch(()=>{});
+      // #endregion
+      console.log("MYDEBUG → API call failed:", {
+        status: err?.response?.status,
+        detail: err?.response?.data?.detail,
+        requestedDate: selectedDate,
+        url: err?.config?.url
+      });
       // If 404 and we haven't tried fallback yet, try to get most recent date
       if (err?.response?.status === 404 && tryFallback) {
+        // #region agent log
+        fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:32',message:'404 error, trying history fallback',data:{selectedDate},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
         try {
           const history = await apiService.getHistory(30);
+          // #region agent log
+          fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:34',message:'History API call result',data:{comparisonsCount:history?.comparisons?.length, availableDates:history?.comparisons?.map(c=>c.date)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+          // #endregion
           if (history.comparisons && history.comparisons.length > 0) {
             // Use the most recent available date
             const mostRecent = history.comparisons[0];
@@ -40,6 +68,9 @@ function App() {
             return;
           }
         } catch (historyErr: any) {
+          // #region agent log
+          fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:42',message:'History fallback also failed',data:{status:historyErr?.response?.status, detail:historyErr?.response?.data?.detail},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+          // #endregion
           // History also failed (likely also 404 - no data), continue to show "no data" message
           // Don't log this as an error since it's expected when there's no data
         }

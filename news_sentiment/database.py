@@ -161,10 +161,36 @@ class NewsDatabase:
         Returns:
             DailyComparison or None if not found
         """
+        # #region agent log
+        import json
+        try:
+            with open('/Users/rebeccaclarke/Documents/Financial/Gigs/devops_software_engineering/conceptprojects/.cursor/debug.log', 'a') as f:
+                f.write(json.dumps({"location":"database.py:164","message":"get_daily_comparison called","data":{"date":date,"date_type":type(date).__name__},"timestamp":int(datetime.now().timestamp()*1000),"sessionId":"debug-session","runId":"run1","hypothesisId":"A,B,C,D"}) + '\n')
+        except: pass
+        # #endregion
         try:
             collection = self.db.daily_comparisons
+            # #region agent log
+            try:
+                # Get sample of all dates in collection for debugging
+                all_docs = list(collection.find({}, {"date": 1}).limit(10))
+                sample_dates = [d.get("date") for d in all_docs]
+                with open('/Users/rebeccaclarke/Documents/Financial/Gigs/devops_software_engineering/conceptprojects/.cursor/debug.log', 'a') as f:
+                    f.write(json.dumps({"location":"database.py:166","message":"MongoDB query - checking available dates","data":{"query_date":date,"sample_dates_in_db":sample_dates,"query_type":"find_one","query_filter":{"date":date}},"timestamp":int(datetime.now().timestamp()*1000),"sessionId":"debug-session","runId":"run1","hypothesisId":"A,B,C,D"}) + '\n')
+            except Exception as e:
+                try:
+                    with open('/Users/rebeccaclarke/Documents/Financial/Gigs/devops_software_engineering/conceptprojects/.cursor/debug.log', 'a') as f:
+                        f.write(json.dumps({"location":"database.py:166","message":"Error checking sample dates","data":{"error":str(e)},"timestamp":int(datetime.now().timestamp()*1000),"sessionId":"debug-session","runId":"run1","hypothesisId":"A,B,C,D"}) + '\n')
+                except: pass
+            # #endregion
             doc = collection.find_one({"date": date})
             
+            # #region agent log
+            try:
+                with open('/Users/rebeccaclarke/Documents/Financial/Gigs/devops_software_engineering/conceptprojects/.cursor/debug.log', 'a') as f:
+                    f.write(json.dumps({"location":"database.py:167","message":"MongoDB find_one result","data":{"date":date,"found":doc is not None,"doc_date":doc.get("date") if doc else None,"doc_keys":list(doc.keys()) if doc else None},"timestamp":int(datetime.now().timestamp()*1000),"sessionId":"debug-session","runId":"run1","hypothesisId":"A,B,C,D"}) + '\n')
+            except: pass
+            # #endregion
             if doc:
                 # Convert ISO strings back to datetime
                 if "created_at" in doc and isinstance(doc["created_at"], str):

@@ -71,7 +71,13 @@ export const apiService = {
    * Get comparison for a specific date
    */
   getDate: async (date: string): Promise<DailyComparison> => {
+    // #region agent log
+    fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.ts:73',message:'getDate API request',data:{date, url:`${API_BASE_URL}/date/${date}`, baseUrl:API_BASE_URL},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B,C'})}).catch(()=>{});
+    // #endregion
     const response = await api.get<DailyComparison>(`/date/${date}`);
+    // #region agent log
+    fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.ts:75',message:'getDate API response',data:{status:response.status, receivedDate:response.data?.date},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     return response.data;
   },
 
@@ -79,9 +85,15 @@ export const apiService = {
    * Get historical comparisons
    */
   getHistory: async (days: number = 7): Promise<HistoryResponse> => {
+    // #region agent log
+    fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.ts:81',message:'getHistory API request',data:{days, url:`${API_BASE_URL}/history`},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+    // #endregion
     const response = await api.get<HistoryResponse>('/history', {
       params: { days },
     });
+    // #region agent log
+    fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.ts:85',message:'getHistory API response',data:{status:response.status, comparisonsCount:response.data?.comparisons?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+    // #endregion
     return response.data;
   },
 
