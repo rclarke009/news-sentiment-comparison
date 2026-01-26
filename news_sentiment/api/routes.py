@@ -88,7 +88,8 @@ async def get_today():
     """Get today's comparison."""
     try:
         db = get_db()
-        today = date.today().isoformat()
+        # Use UTC date consistently (Render servers use UTC)
+        today = datetime.utcnow().date().isoformat()
         comparison = db.get_daily_comparison(today)
         
         if not comparison:
@@ -175,7 +176,8 @@ async def get_most_uplifting(
         raise HTTPException(status_code=400, detail="side must be 'conservative' or 'liberal'")
     
     if date_str is None:
-        date_str = date.today().isoformat()
+        # Use UTC date consistently (Render servers use UTC)
+        date_str = datetime.utcnow().date().isoformat()
     else:
         try:
             datetime.strptime(date_str, "%Y-%m-%d")

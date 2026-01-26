@@ -40,7 +40,8 @@ class NewsCollector:
             DailyComparison object with aggregated results
         """
         if target_date is None:
-            target_date = date.today()
+            # Use UTC date consistently (Render servers use UTC)
+            target_date = datetime.utcnow().date()
         
         date_str = target_date.isoformat()
         logger.info(f"Starting daily collection for {date_str}")
