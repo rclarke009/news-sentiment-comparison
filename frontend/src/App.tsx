@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { format } from 'date-fns';
 import { apiService, DailyComparison } from './services/api';
 import DailyComparisonView from './components/DailyComparison';
 import Header from './components/Header';
@@ -10,25 +11,46 @@ function App() {
   const [comparison, setComparison] = useState<DailyComparison | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Start with null - we'll load the most recent available date on mount
+  // Start with null - we'll load local "today" or most recent on mount
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [noDataAvailable, setNoDataAvailable] = useState(false);
+  const [fallbackMessage, setFallbackMessage] = useState<string | null>(null);
 
-  // On initial load, get the most recent available date (avoids timezone issues)
+  const skipNextSelectedDateEffect = useRef(false);
+
+  // On initial load: prefer user's local "today", then fall back to most recent
   useEffect(() => {
     const loadInitialData = async () => {
       try {
         setLoading(true);
-        // Always get the most recent available date to avoid timezone mismatches
-        // This ensures we show the latest data that actually exists, not a future date
-        const history = await apiService.getHistory(30);
-        if (history.comparisons && history.comparisons.length > 0) {
-          const mostRecent = history.comparisons[0];
-          setComparison(mostRecent);
-          setSelectedDate(mostRecent.date);
-          console.log("MYDEBUG → Loaded most recent available date:", mostRecent.date);
-        } else {
-          setNoDataAvailable(true);
+        setError(null);
+        setFallbackMessage(null);
+        const localToday = format(new Date(), 'yyyy-MM-dd');
+        try {
+          const data = await apiService.getDate(localToday);
+          setComparison(data);
+          skipNextSelectedDateEffect.current = true;
+          setSelectedDate(data.date);
+        } catch (err: any) {
+          if (err?.response?.status === 404) {
+            try {
+              const history = await apiService.getHistory(30);
+              if (history.comparisons && history.comparisons.length > 0) {
+                const mostRecent = history.comparisons[0];
+                setComparison(mostRecent);
+                setFallbackMessage(`Showing latest available: ${mostRecent.date}`);
+                skipNextSelectedDateEffect.current = true;
+                setSelectedDate(mostRecent.date);
+              } else {
+                setNoDataAvailable(true);
+              }
+            } catch (historyErr: any) {
+              setNoDataAvailable(true);
+            }
+          } else {
+            setNoDataAvailable(true);
+            setError(err?.response?.data?.detail || err?.message || 'Failed to load data');
+          }
         }
       } catch (err: any) {
         setNoDataAvailable(true);
@@ -38,17 +60,16 @@ function App() {
       }
     };
     loadInitialData();
-  }, []); // Only run on mount
+  }, []);
 
   // When selectedDate changes (user picks a date manually), load that date
-  // Note: We use a ref to skip the initial set from loadInitialData
-  const isInitialLoad = useRef(true);
   useEffect(() => {
-    if (isInitialLoad.current) {
-      isInitialLoad.current = false;
-      return; // Skip on initial load (handled by loadInitialData)
+    if (skipNextSelectedDateEffect.current) {
+      skipNextSelectedDateEffect.current = false;
+      return; // Skip; this change came from loadInitialData
     }
     if (selectedDate) {
+      setFallbackMessage(null); // User explicitly picked a date; clear fallback hint
       loadComparison();
     }
   }, [selectedDate]);
@@ -185,6 +206,15 @@ function App() {
     <div className="min-h-screen bg-gray-50">
       <Header selectedDate={selectedDate} onDateChange={setSelectedDate} />
       
+      {fallbackMessage && (
+        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mx-4 mt-4">
+          <div className="flex">
+            <div className="ml-3">
+              <p className="text-sm text-blue-700">{fallbackMessage}</p>
+            </div>
+          </div>
+        </div>
+      )}
       {error && (
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mx-4 mt-4">
           <div className="flex">
