@@ -28,6 +28,8 @@
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "test:e2e": "playwright test",
-    "test:e2e:prod": "PLAYWRIGHT_BASE_URL=https://sentiment-lens.onrender.com playwright test"
+    "test:e2e:prod": "PLAYWRIGHT_BASE_URL=https://sentiment-lens.onrender.com playwright test",
+    "test:api": "playwright test e2e/api.spec.ts",
+    "test:api:prod": "PLAYWRIGHT_API_URL=https://sentiment-lens.onrender.com/api/v1 playwright test e2e/api.spec.ts"
   }
 }

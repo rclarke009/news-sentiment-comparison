@@ -28,22 +28,9 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      // #can we add safari or other browsers?
-      // #yes, we can add safari or other browsers.
-      // #we can add safari or other browsers by adding the following to the projects array:
-      // #use: { ...devices['Desktop Safari'] },
-      // #use: { ...devices['Desktop Firefox'] },
-      // #use: { ...devices['Desktop Edge'] },
-      // #use: { ...devices['Desktop Opera'] },
-      // #use: { ...devices['Desktop Internet Explorer'] },
-      // #use: { ...devices['Desktop Microsoft Edge'] },
-      // #use: { ...devices['Desktop Microsoft Internet Explorer'] },
-      // #use: { ...devices['Desktop Microsoft Edge'] },
-      // #use: { ...devices['Desktop Microsoft Internet Explorer'] },
-      // #use: { ...devices['Desktop Microsoft Edge'] },
-      // #but we are not testing how it looks, just that it loads and shows content?
-      // #yes, we are not testing how it looks, just that it loads and shows content.
-      
+      // To add more browsers, uncomment:
+      // { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+      // { name: 'webkit', use: { ...devices['Desktop Safari'] } },
     },
   ],
 
