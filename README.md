@@ -633,6 +633,8 @@ For production, use MongoDB Atlas (cloud database):
 - [ ] Set up cron job on backend host (or external service)
 - [ ] Test the complete flow: cron → database → API → frontend
 
+
+
 ## Next Steps
 
 - [x] React frontend dashboard
@@ -640,6 +642,16 @@ For production, use MongoDB Atlas (cloud database):
 - [ ] Email summaries
 - [ ] Historical trend analysis
 - [ ] Export capabilities (CSV, JSON)
+- [ ] Add logic to only call expensive LLM when local model confidence is low (cost optimization story for interviews)
+- [ ] Add comparison between local model and LLM over time.
+
+## Challenges Overcome
+
+Date format was utc in some areas and local time in others.
+Didn't get the deployment quite right the first time - a key had been truncated in the environment variables.
+
+
+
 
 ## License
 
