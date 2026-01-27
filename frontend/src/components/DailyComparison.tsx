@@ -92,7 +92,7 @@ const DailyComparison: React.FC<DailyComparisonProps> = ({ comparison }) => {
               <div className="bg-gray-50 p-3 rounded">
                 <p className="text-xs text-gray-600">LLM Positive %</p>
                 <p className="text-lg font-bold">{conservative.positive_percentage.toFixed(1)}%</p>
-                {conservative.local_positive_percentage !== undefined && (
+                {conservative.local_positive_percentage != null && (
                   <p className="text-xs text-gray-500 mt-1">
                     Local: {conservative.local_positive_percentage.toFixed(1)}%
                   </p>
@@ -140,7 +140,7 @@ const DailyComparison: React.FC<DailyComparisonProps> = ({ comparison }) => {
               <div className="bg-gray-50 p-3 rounded">
                 <p className="text-xs text-gray-600">LLM Positive %</p>
                 <p className="text-lg font-bold">{liberal.positive_percentage.toFixed(1)}%</p>
-                {liberal.local_positive_percentage !== undefined && (
+                {liberal.local_positive_percentage != null && (
                   <p className="text-xs text-gray-500 mt-1">
                     Local: {liberal.local_positive_percentage.toFixed(1)}%
                   </p>

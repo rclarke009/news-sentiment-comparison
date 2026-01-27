@@ -727,10 +727,11 @@ For production, use MongoDB Atlas (cloud database):
 - [ ] Add logic to only call expensive LLM when local model confidence is low (cost optimization story for interviews)
 - [ ] Add comparison between local model and LLM over time.
 
-## Challenges Overcome
+## Challenges Overcome / Lessons Learned
 
 - **Timezone Consistency**: Resolved date format inconsistencies between UTC and local time across different components of the system
 - **Deployment Configuration**: Debugged and fixed environment variable truncation issues during initial cloud deployment setup
+- **Timeout Issues**: Debugged and fixed timeout issues during initial cloud deployment setup (Render on free tier was spinning down, so the cron job couldn't access the API.)
 
 
 
