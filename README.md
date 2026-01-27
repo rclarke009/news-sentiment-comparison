@@ -12,7 +12,7 @@ A production-ready platform for comparing sentiment and "uplift" scores between 
 - 📈 **Historical Trends**: Track sentiment changes over time
 - 🗄️ **MongoDB Storage**: Simple document-based storage for headlines and comparisons
 - 🚀 **FastAPI Backend**: RESTful API for data access
-- ⚛️ **React Frontend**: Modern dashboard with visualizations (coming soon)
+- ⚛️ **React Frontend**: Modern dashboard with visualizations - [Live Demo](https://sentimentlens.netlify.app)
 
 ## Architecture
 
@@ -117,8 +117,10 @@ uvicorn news_sentiment.api.main:app --reload
 
 API will be available at `http://localhost:8000`
 
-- API Docs: `http://localhost:8000/docs`
-- Health Check: `http://localhost:8000/api/v1/health`
+- **Live Frontend**: https://sentimentlens.netlify.app
+- **Local API Docs**: `http://localhost:8000/docs`
+- **Production API Docs**: https://sentiment-lens.onrender.com/docs
+- **Health Check**: `http://localhost:8000/api/v1/health`
 
 ### 6. Test the API
 
@@ -154,6 +156,8 @@ news-sentiment-comparison/
 ```
 
 ## API Endpoints
+
+> **Interactive API Documentation**: View and test all endpoints at [https://sentiment-lens.onrender.com/docs](https://sentiment-lens.onrender.com/docs)
 
 ### Comparisons
 - `GET /api/v1/today` - Get today's comparison
