@@ -71,6 +71,7 @@ htmlcov/
 test-results/
 playwright-report/
 playwright/.cache/
+zap-reports/
 
 # MongoDB
 *.bson

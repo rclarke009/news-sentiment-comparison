@@ -7,7 +7,7 @@ It performs spider crawling and active vulnerability scanning.
 
 Prerequisites:
 - ZAP must be running (see README for setup instructions)
-- Or use Docker: docker run -d -p 8080:8080 owasp/zap2docker-stable zap.sh -daemon -host 0.0.0.0 -port 8080
+- Or use Docker: docker run -d -p 8080:8080 zaproxy/zap-stable zap.sh -daemon -host 0.0.0.0 -port 8080
 
 Usage:
     python scripts/zap_scan.py --target http://localhost:8000
@@ -54,17 +54,26 @@ class ZAPScanner:
 
     def wait_for_zap(self, timeout: int = 30) -> bool:
         """Wait for ZAP to be ready."""
-        logger.info("Waiting for ZAP to be ready...")
+        logger.info(f"Waiting for ZAP to be ready at {self.zap_url}...")
         start_time = time.time()
+        last_error = None
         while time.time() - start_time < timeout:
             try:
                 version = self.zap.core.version
                 logger.info(f"ZAP version: {version}")
                 return True
             except Exception as e:
+                last_error = str(e)
                 logger.debug(f"ZAP not ready yet: {e}")
                 time.sleep(2)
-        logger.error("ZAP did not become ready in time")
+        logger.error(f"ZAP did not become ready in time")
+        logger.error(f"Last error: {last_error}")
+        logger.error(f"Tried connecting to: {self.zap_url}")
+        logger.error("\nTroubleshooting:")
+        logger.error("1. If using ZAP GUI: Enable API in Tools → Options → API")
+        logger.error("2. If using Docker: docker run -d -p 8080:8080 zaproxy/zap-stable zap.sh -daemon")
+        logger.error("3. Check if ZAP is running: Check the ZAP GUI or 'docker ps' for Docker")
+        logger.error("4. Try a different port: --zap-url http://localhost:8090 (if ZAP is on port 8090)")
         return False
 
     def spider_scan(self, target_url: str, max_children: int = 10) -> str:
@@ -284,7 +293,7 @@ def main():
     # Wait for ZAP to be ready
     if not scanner.wait_for_zap():
         logger.error("ZAP is not available. Make sure ZAP is running.")
-        logger.info("Start ZAP with: docker run -d -p 8080:8080 owasp/zap2docker-stable zap.sh -daemon")
+        logger.info("Start ZAP with: docker run -d -p 8080:8080 zaproxy/zap-stable zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.disablekey=true -config 'api.addrs.addr.name=.*' -config 'api.addrs.addr.regex=true'")
         sys.exit(1)
 
     try:

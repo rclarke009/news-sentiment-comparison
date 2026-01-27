@@ -80,6 +80,13 @@ async def health_check(request: Request):
     Used by keep-alive pings, Render health checks, and smoke tests.
     Returns 200 as long as the app is running, without checking database connectivity.
     """
+    # #region agent log
+    logger.info(
+        "health_check entered path=/health client=%s",
+        request.client.host if request.client else "unknown",
+        extra={"hypothesisId": "H1_H3_H5", "path": "/health"},
+    )
+    # #endregion
     return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
 
 
@@ -91,6 +98,13 @@ async def health_check_db(request: Request):
     Use this for monitoring/debugging when you need to verify database connectivity.
     Returns 503 if database connection fails.
     """
+    # #region agent log
+    logger.info(
+        "health_check_db entered path=/health/db client=%s",
+        request.client.host if request.client else "unknown",
+        extra={"hypothesisId": "H4", "path": "/health/db"},
+    )
+    # #endregion
     try:
         # Test database connection
         db = get_db()

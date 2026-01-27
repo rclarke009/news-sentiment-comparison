@@ -1,0 +1,38 @@
+{
+  "zap": {
+    "description": "OWASP ZAP configuration for News Sentiment Comparison API security testing",
+    "default_zap_url": "http://localhost:8080",
+    "scan_settings": {
+      "spider": {
+        "max_children": 10,
+        "recurse": true,
+        "max_depth": 5
+      },
+      "active_scan": {
+        "recurse": true,
+        "in_scope_only": true,
+        "scan_policy": "Default"
+      }
+    },
+    "context": {
+      "name": "news-sentiment-api",
+      "include_patterns": [
+        ".*"
+      ],
+      "exclude_patterns": []
+    },
+    "report_formats": [
+      "JSON",
+      "HTML"
+    ]
+  },
+  "targets": {
+    "local": "http://localhost:8000",
+    "production": "https://sentiment-lens.onrender.com"
+  },
+  "notes": [
+    "Start ZAP with: docker run -d -p 8080:8080 zaproxy/zap-stable zap.sh -daemon",
+    "Or install ZAP locally and run: zap.sh -daemon",
+    "Run scans with: python scripts/zap_scan.py --target <URL>"
+  ]
+}

@@ -1,18 +1,19 @@
 # News Sentiment Comparison Tool
 
-A production-ready platform for comparing sentiment and "uplift" scores between conservative and liberal news sources. Fetches top headlines daily, scores them using LLM-based sentiment analysis, and provides a web dashboard for visualization.
+A production-ready automation platform that orchestrates data collection, API integration, and scheduled workflows. The system automatically fetches headlines from multiple news sources via REST APIs and RSS feeds, processes them through an automated pipeline, and serves results through a RESTful API with a web dashboard. Uses AI-powered sentiment analysis as part of the processing pipeline.
 
 ## Features
 
-- 📰 **Daily Headline Collection**: Automatically fetches top stories from conservative and liberal news sources
-- 🤖 **LLM-Powered Sentiment Scoring**: Uses Groq or OpenAI to score headlines for "uplift" (-5 to +5 scale)
-- 🎯 **Puff Piece Detection**: Automatically boosts scores for heartwarming/uplifting stories
+- 🔄 **Automated Data Collection**: Scheduled workflows orchestrate daily headline collection from multiple sources via REST APIs and RSS feeds
+- 🚀 **FastAPI Backend**: Production-ready RESTful API with health checks, authentication, and comprehensive error handling
+- ⚙️ **Infrastructure as Code**: Complete deployment automation via Render Blueprint (render.yaml) for multi-service architecture
+- 🔐 **Secure API Endpoints**: Protected collection endpoints with secret-based authentication for external cron triggers
+- 📡 **Multi-Source Integration**: Integrates with NewsAPI REST service and RSS feeds for comprehensive data collection
+- 🗄️ **MongoDB Storage**: Document-based storage with connection pooling and error recovery
+- ⚛️ **React Frontend**: Modern dashboard with real-time visualizations - [Live Demo](https://sentimentlens.netlify.app)
+- 🤖 **AI-Powered Processing**: Uses LLM APIs (Groq/OpenAI) for sentiment scoring as part of the automated pipeline
 - 📊 **Daily Comparisons**: Aggregates and compares sentiment across political sides
-- 🌟 **Most Uplifting Stories**: Highlights the most positive story from each side daily
 - 📈 **Historical Trends**: Track sentiment changes over time
-- 🗄️ **MongoDB Storage**: Simple document-based storage for headlines and comparisons
-- 🚀 **FastAPI Backend**: RESTful API for data access
-- ⚛️ **React Frontend**: Modern dashboard with visualizations - [Live Demo](https://sentimentlens.netlify.app)
 
 ## Architecture
 
@@ -135,6 +136,38 @@ curl http://localhost:8000/api/v1/most-uplifting?side=conservative
 curl http://localhost:8000/api/v1/history?days=7
 ```
 
+## Portfolio Demo / Manual Collection
+
+For portfolio demonstrations or when cron jobs aren't running, you can manually trigger data collection:
+
+### Option 1: Command Line Script
+```bash
+# Collect for today
+python scripts/run_collector.py
+
+# Collect for specific date
+python scripts/run_collector.py --date 2026-01-24
+
+# Dry run (test without saving to database)
+python scripts/run_collector.py --dry-run
+```
+
+### Option 2: API Endpoint (if deployed)
+If your API is deployed, you can trigger collection via the secure API endpoint:
+
+```bash
+# Requires CRON_SECRET_KEY header (set in your environment variables)
+curl -X POST https://your-api-url.onrender.com/api/v1/collect \
+  -H "X-Cron-Secret: your_secret_key_here"
+```
+
+This allows you to demonstrate the full automation pipeline on-demand without waiting for scheduled runs. The collection process will:
+1. Fetch headlines from all configured sources (NewsAPI + RSS feeds)
+2. Process and score each headline
+3. Calculate statistics and comparisons
+4. Save results to MongoDB
+5. Return a summary with collection results
+
 ## Project Structure
 
 ```
@@ -222,6 +255,23 @@ See **QUICKSTART.md** → [Making Code Changes & Restarting](QUICKSTART.md#makin
 pip install -r requirements-dev.txt
 pytest
 ```
+
+### Security Testing (OWASP ZAP)
+
+Run security scans with OWASP ZAP to identify common vulnerabilities:
+
+```bash
+# Start ZAP (Docker)
+docker run -d -p 8080:8080 --name zap zaproxy/zap-stable zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.disablekey=true -config 'api.addrs.addr.name=.*' -config 'api.addrs.addr.regex=true'
+
+# Run scan against local API
+python scripts/zap_scan.py --target http://localhost:8000
+
+# Run scan against production
+python scripts/zap_scan.py --target https://sentiment-lens.onrender.com
+```
+
+See [SECURITY.md](SECURITY.md#security-testing-with-owasp-zap) for detailed instructions.
 
 ### Smoke testing production
 
@@ -448,16 +498,7 @@ You should get a JSON response with collection results.
 
 ### Manual Collection
 
-```bash
-# Collect for today
-python scripts/run_collector.py
-
-# Collect for specific date
-python scripts/run_collector.py --date 2026-01-24
-
-# Dry run (don't save to DB)
-python scripts/run_collector.py --dry-run
-```
+For manual collection (useful for portfolio demos or troubleshooting), see the [Portfolio Demo / Manual Collection](#portfolio-demo--manual-collection) section above.
 
 ## Troubleshooting
 
@@ -688,8 +729,8 @@ For production, use MongoDB Atlas (cloud database):
 
 ## Challenges Overcome
 
-Date format was utc in some areas and local time in others.
-Didn't get the deployment quite right the first time - a key had been truncated in the environment variables.
+- **Timezone Consistency**: Resolved date format inconsistencies between UTC and local time across different components of the system
+- **Deployment Configuration**: Debugged and fixed environment variable truncation issues during initial cloud deployment setup
 
 
 

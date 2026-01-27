@@ -30,6 +30,97 @@ Add it to your workflow (e.g. pre-commit hook or CI step) to reduce the risk of 
 - **Security headers**: The API adds `X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`, and `Referrer-Policy` to responses.
 - **Collection endpoint**: `POST /api/v1/collect` requires the `X-Cron-Secret` header matching `CRON_SECRET_KEY`. Unauthorized attempts are logged with client IP.
 
+## Security testing with OWASP ZAP
+
+The project includes basic OWASP ZAP security testing to identify common vulnerabilities.
+
+### Prerequisites
+
+1. **Install ZAP** (choose one method):
+
+   **Option A: Docker (Recommended - Easiest)**
+   ```bash
+   docker run -d -p 8080:8080 --name zap zaproxy/zap-stable zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.disablekey=true -config 'api.addrs.addr.name=.*' -config 'api.addrs.addr.regex=true'
+   ```
+   
+   This command:
+   - Starts ZAP in daemon mode
+   - Disables API key requirement (for local testing)
+   - Allows API access from any IP address
+
+   **Option B: ZAP GUI with API Enabled**
+   - Download ZAP from https://www.zaproxy.org/download/
+   - Open ZAP GUI
+   - Go to **Tools → Options → API**
+   - Check **"Enable API"** and set port to `8080`
+   - Or start from command line: `/Applications/OWASP\ ZAP.app/Contents/Java/zap.sh -daemon -host 0.0.0.0 -port 8080`
+
+   See `scripts/zap_setup_guide.md` for detailed setup instructions.
+
+2. **Install Python dependencies:**
+   ```bash
+   pip install -r requirements-dev.txt
+   ```
+
+### Running ZAP Scans
+
+**Basic scan (local API):**
+```bash
+# Make sure your API is running on localhost:8000
+uvicorn news_sentiment.api.main:app --reload
+
+# In another terminal, run ZAP scan
+python scripts/zap_scan.py --target http://localhost:8000
+```
+
+**Scan production API:**
+```bash
+python scripts/zap_scan.py --target https://sentiment-lens.onrender.com
+```
+
+**Custom options:**
+```bash
+# Skip spider scan (only active scan)
+python scripts/zap_scan.py --target http://localhost:8000 --skip-spider
+
+# Skip active scan (only spider crawl)
+python scripts/zap_scan.py --target http://localhost:8000 --skip-active
+
+# Generate HTML report instead of JSON
+python scripts/zap_scan.py --target http://localhost:8000 --report-format HTML
+
+# Custom ZAP URL
+python scripts/zap_scan.py --target http://localhost:8000 --zap-url http://localhost:8090
+```
+
+### Understanding Results
+
+- **High/Medium risk alerts**: Should be addressed before production deployment
+- **Low/Informational alerts**: Review and address as appropriate
+- Reports are saved to `zap-reports/` directory by default
+
+### Integration with CI/CD
+
+For automated security testing in CI/CD pipelines:
+
+```yaml
+# Example GitHub Actions workflow
+- name: Start ZAP
+  run: |
+    docker run -d -p 8080:8080 --name zap zaproxy/zap-stable zap.sh -daemon
+
+- name: Run ZAP scan
+  run: |
+    pip install -r requirements-dev.txt
+    python scripts/zap_scan.py --target http://localhost:8000
+
+- name: Upload ZAP report
+  uses: actions/upload-artifact@v3
+  with:
+    name: zap-report
+    path: zap-reports/
+```
+
 ## Dependency hygiene
 
 - Python dependencies are pinned in `requirements.txt`. Periodically run `pip-audit` or `safety check` and update vulnerable packages.
