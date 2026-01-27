@@ -68,6 +68,9 @@ Thumbs.db
 .coverage
 htmlcov/
 .tox/
+test-results/
+playwright-report/
+playwright/.cache/
 
 # MongoDB
 *.bson

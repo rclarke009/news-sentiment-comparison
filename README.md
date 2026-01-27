@@ -219,6 +219,18 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
+### Smoke testing production
+
+After deploying to Render, run a quick smoke test against your production API:
+
+```bash
+python scripts/smoke_test_production.py
+# If your API uses a different URL (e.g. sentiment-lens.onrender.com):
+python scripts/smoke_test_production.py --base-url https://your-api.onrender.com
+```
+
+Use it **after deploys**, **after env var changes**, or when debugging prod vs local. See **QUICKSTART.md** → [Smoke testing production](QUICKSTART.md#smoke-testing-production) for when and how.
+
 ### Code Formatting
 
 ```bash

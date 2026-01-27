@@ -136,6 +136,30 @@ python scripts/run_collector.py
 
 **Blueprint (multi-service):** If you use the `render.yaml` Blueprint, push code changes as above; both API and frontend redeploy. Adjust env vars per service in the dashboard, then redeploy each service as needed.
 
+### Smoke testing production
+
+After you deploy (or redeploy) the API, run a quick smoke test to verify the production API is up and returning expected data:
+
+```bash
+# Default base URL (blueprint: news-sentiment-api.onrender.com)
+python scripts/smoke_test_production.py
+
+# Your Render service uses a different URL (e.g. sentiment-lens)
+python scripts/smoke_test_production.py --base-url https://your-api.onrender.com
+
+# Verbose: print response details
+python scripts/smoke_test_production.py --base-url https://your-api.onrender.com -v
+```
+
+**When to use it:**
+
+- **After a deploy** — Once Render reports "Your service is live", run the smoke test to confirm health, sources, today, and history endpoints respond as expected.
+- **After env var changes** — If you updated API keys or `MONGODB_URI` in the Render dashboard and redeployed, run it to catch config issues.
+- **Debugging prod vs local** — When something works locally but not in production, run the script against your production URL to see which endpoint fails.
+- **Ongoing checks** — Optionally run from CI or a separate cron to detect outages.
+
+The script exits 0 on success and 1 if any check fails. Use `--base-url` when your API service has a different hostname than the blueprint default (e.g. you named the service `sentiment-lens` → `https://sentiment-lens.onrender.com`).
+
 ## Troubleshooting
 
 ### MongoDB Connection Failed
