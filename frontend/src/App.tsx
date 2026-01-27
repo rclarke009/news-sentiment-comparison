@@ -24,31 +24,25 @@ function App() {
         setLoading(true);
         setError(null);
         setFallbackMessage(null);
-        if (import.meta.env.DEV) console.log('MYDEBUG → Requesting /today');
         try {
           const data = await apiService.getToday();
-          if (import.meta.env.DEV) console.log('MYDEBUG → Received /today:', data?.date, 'hasData:', !!data);
           setComparison(data);
           skipNextSelectedDateEffect.current = true;
           setSelectedDate(data.date);
         } catch (err: any) {
           if (err?.response?.status === 404) {
-            if (import.meta.env.DEV) console.log('MYDEBUG → /today 404, trying history fallback');
             try {
               const history = await apiService.getHistory(30);
               if (history.comparisons && history.comparisons.length > 0) {
                 const mostRecent = history.comparisons[0];
-                if (import.meta.env.DEV) console.log('MYDEBUG → History fallback: latest', mostRecent.date);
                 setComparison(mostRecent);
                 setFallbackMessage(`Showing latest available: ${mostRecent.date}`);
                 skipNextSelectedDateEffect.current = true;
                 setSelectedDate(mostRecent.date);
               } else {
-                if (import.meta.env.DEV) console.log('MYDEBUG → History empty');
                 setNoDataAvailable(true);
               }
             } catch (historyErr: any) {
-              if (import.meta.env.DEV) console.log('MYDEBUG → History fallback failed:', historyErr?.response?.status);
               setNoDataAvailable(true);
             }
           } else {
@@ -85,17 +79,9 @@ function App() {
       setLoading(true);
       setError(null);
       setNoDataAvailable(false);
-      if (import.meta.env.DEV) console.log("MYDEBUG → Requesting date:", selectedDate);
       const data = await apiService.getDate(selectedDate);
-      if (import.meta.env.DEV) console.log("MYDEBUG → Received data:", data?.date, "hasData:", !!data);
       setComparison(data);
     } catch (err: any) {
-      if (import.meta.env.DEV) console.log("MYDEBUG → API call failed:", {
-        status: err?.response?.status,
-        detail: err?.response?.data?.detail,
-        requestedDate: selectedDate,
-        url: err?.config?.url
-      });
       // If 404 and we haven't tried fallback yet, try to get most recent date
       if (err?.response?.status === 404 && tryFallback) {
         try {
@@ -103,14 +89,12 @@ function App() {
           if (history.comparisons && history.comparisons.length > 0) {
             // Use the most recent available date
             const mostRecent = history.comparisons[0];
-            if (import.meta.env.DEV) console.log("MYDEBUG → Fallback found data for:", mostRecent.date, "updating selectedDate");
             setComparison(mostRecent);
             setSelectedDate(mostRecent.date); // Update selectedDate to match the found data
             setError(null); // Clear error since we found data
             return;
           }
         } catch (historyErr: any) {
-          if (import.meta.env.DEV) console.log('MYDEBUG → History fallback failed:', historyErr?.response?.status);
           // History also failed (likely also 404 - no data), continue to show "no data" message
         }
       }
@@ -120,10 +104,9 @@ function App() {
         setNoDataAvailable(true);
         setComparison(null); // Clear stale comparison so we show "No Data Available" screen
       } else {
-        // Only log non-404 errors (network issues, server errors, etc.)
+        // Only set error for non-404 errors (network issues, server errors, etc.)
         const errorMessage = err?.response?.data?.detail || err?.message || 'Failed to load comparison';
         setError(errorMessage);
-        if (import.meta.env.DEV) console.error('Error loading comparison:', err);
       }
     } finally {
       setLoading(false);
@@ -200,25 +183,7 @@ function App() {
   }
 
   if (!comparison) {
-    if (import.meta.env.DEV) console.log("MYDEBUG → No comparison to render, selectedDate:", selectedDate);
     return null;
-  }
-
-  if (import.meta.env.DEV) {
-    console.log("MYDEBUG → Rendering comparison for date:", comparison.date, "selectedDate:", selectedDate);
-    console.log('MYDEBUG → Comparison data:', {
-      date: comparison.date,
-      conservative: {
-        avg_uplift: comparison.conservative.avg_uplift,
-        total_headlines: comparison.conservative.total_headlines,
-        hasMostUplifting: !!comparison.conservative.most_uplifting
-      },
-      liberal: {
-        avg_uplift: comparison.liberal.avg_uplift,
-        total_headlines: comparison.liberal.total_headlines,
-        hasMostUplifting: !!comparison.liberal.most_uplifting
-      }
-    });
   }
 
   return (

@@ -72,7 +72,7 @@ async def get_sources():
 
 
 @router.get("/health", tags=["health"])
-async def health_check():
+async def health_check(request: Request):
     """Health check endpoint."""
     try:
         # Test database connection
@@ -80,12 +80,13 @@ async def health_check():
         db.client.admin.command("ping")
         return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
+        context = _get_request_context(request)
+        logger.error(f"Health check failed - {context}: {e}", exc_info=True)
         raise HTTPException(status_code=503, detail="Service unhealthy")
 
 
 @router.get("/today", response_model=DailyComparisonResponse, tags=["comparisons"])
-async def get_today():
+async def get_today(request: Request):
     """Get today's comparison."""
     try:
         db = get_db()
@@ -104,7 +105,8 @@ async def get_today():
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching today's comparison: {e}", exc_info=True)
+        context = _get_request_context(request)
+        logger.error(f"Error fetching today's comparison - {context}: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail="Internal server error while fetching today's comparison"
@@ -112,7 +114,7 @@ async def get_today():
 
 
 @router.get("/date/{date_str}", response_model=DailyComparisonResponse, tags=["comparisons"])
-async def get_date(date_str: str):
+async def get_date(date_str: str, request: Request):
     """Get comparison for a specific date (YYYY-MM-DD)."""
     try:
         # Validate date format
@@ -135,7 +137,8 @@ async def get_date(date_str: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching comparison for date {date_str}: {e}", exc_info=True)
+        context = _get_request_context(request)
+        logger.error(f"Error fetching comparison for date {date_str} - {context}: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Internal server error while fetching comparison for date {date_str}"
@@ -143,7 +146,7 @@ async def get_date(date_str: str):
 
 
 @router.get("/history", response_model=HistoryResponse, tags=["comparisons"])
-async def get_history(days: int = Query(7, ge=1, le=365)):
+async def get_history(days: int = Query(7, ge=1, le=365), request: Request = None):
     """Get historical comparisons for the last N days."""
     try:
         db = get_db()
@@ -160,7 +163,8 @@ async def get_history(days: int = Query(7, ge=1, le=365)):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching history for {days} days: {e}", exc_info=True)
+        context = _get_request_context(request) if request else "unknown"
+        logger.error(f"Error fetching history for {days} days - {context}: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail="Internal server error while fetching historical comparisons"
@@ -170,7 +174,8 @@ async def get_history(days: int = Query(7, ge=1, le=365)):
 @router.get("/most-uplifting", response_model=MostUpliftingResponse, tags=["stories"])
 async def get_most_uplifting(
     side: str = Query(..., description="'conservative' or 'liberal'"),
-    date_str: Optional[str] = Query(None, description="Date in YYYY-MM-DD format (defaults to today)")
+    date_str: Optional[str] = Query(None, description="Date in YYYY-MM-DD format (defaults to today)"),
+    request: Request = None
 ):
     """Get the most uplifting story for a side on a specific date."""
     if side not in ["conservative", "liberal"]:
@@ -216,7 +221,8 @@ async def get_most_uplifting(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching most uplifting story for {side} on {date_str}: {e}", exc_info=True)
+        context = _get_request_context(request) if request else "unknown"
+        logger.error(f"Error fetching most uplifting story for {side} on {date_str} - {context}: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail="Internal server error while fetching most uplifting story"
@@ -224,7 +230,7 @@ async def get_most_uplifting(
 
 
 @router.get("/stats", response_model=StatsResponse, tags=["statistics"])
-async def get_stats(days: int = Query(30, ge=1, le=365)):
+async def get_stats(days: int = Query(30, ge=1, le=365), request: Request = None):
     """Get aggregate statistics over the last N days."""
     try:
         db = get_db()
@@ -264,7 +270,8 @@ async def get_stats(days: int = Query(30, ge=1, le=365)):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching stats for {days} days: {e}", exc_info=True)
+        context = _get_request_context(request) if request else "unknown"
+        logger.error(f"Error fetching stats for {days} days - {context}: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail="Internal server error while fetching statistics"
@@ -277,6 +284,14 @@ def _client_ip(request: Request) -> str:
     if forwarded:
         return forwarded.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
+
+
+def _get_request_context(request: Request) -> str:
+    """Extract request context for logging (path, method, client IP)."""
+    path = request.url.path
+    method = request.method
+    client_ip = _client_ip(request)
+    return f"{method} {path} (IP: {client_ip})"
 
 
 @router.post("/collect", tags=["collection"])
@@ -341,20 +356,22 @@ async def trigger_collection(
         }
     except requests.exceptions.HTTPError as e:
         # Check if it's a 429 rate limit error
+        context = _get_request_context(request)
         if hasattr(e, 'response') and e.response is not None and e.response.status_code == 429:
-            logger.error(f"NewsAPI rate limit exceeded during collection: {e}")
+            logger.error(f"NewsAPI rate limit exceeded during collection - {context}: {e}", exc_info=True)
             raise HTTPException(
                 status_code=429,
                 detail=f"NewsAPI rate limit exceeded. {str(e)}. This may be due to the daily limit (100 requests/day on free tier). Please try again later."
             )
         # Re-raise other HTTP errors as 500
-        logger.error(f"HTTP error during manual collection: {e}", exc_info=True)
+        logger.error(f"HTTP error during manual collection - {context}: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Collection failed: {str(e)}"
         )
     except Exception as e:
-        logger.error(f"Error during manual collection: {e}", exc_info=True)
+        context = _get_request_context(request)
+        logger.error(f"Error during manual collection - {context}: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Collection failed: {str(e)}"

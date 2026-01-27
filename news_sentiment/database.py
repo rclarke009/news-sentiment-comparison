@@ -51,7 +51,7 @@ class NewsDatabase:
             self.db = self.client[self.config.mongodb.database_name]
             logger.info(f"Connected to MongoDB: {self.config.mongodb.database_name}")
         except ConnectionFailure as e:
-            logger.error(f"Failed to connect to MongoDB: {e}")
+            logger.error(f"Failed to connect to MongoDB (database: {self.config.mongodb.database_name}): {e}", exc_info=True)
             raise
     
     def _create_indexes(self) -> None:
@@ -75,7 +75,7 @@ class NewsDatabase:
             
             logger.debug("Database indexes created")
         except Exception as e:
-            logger.warning(f"Error creating indexes: {e}")
+            logger.warning(f"Error creating database indexes: {e}", exc_info=True)
     
     def save_headlines(self, headlines: List[Headline], date: str) -> int:
         """
@@ -123,7 +123,7 @@ class NewsDatabase:
             return len(result.inserted_ids)
         
         except Exception as e:
-            logger.error(f"Error saving headlines: {e}")
+            logger.error(f"Error saving {len(headlines)} headlines to database for date {date}: {e}", exc_info=True)
             raise
     
     def save_daily_comparison(self, comparison: DailyComparison) -> bool:
@@ -160,7 +160,7 @@ class NewsDatabase:
             return True
         
         except Exception as e:
-            logger.error(f"Error saving daily comparison: {e}")
+            logger.error(f"Error saving daily comparison for date {comparison.date}: {e}", exc_info=True)
             raise
     
     def get_daily_comparison(self, date: str) -> Optional[DailyComparison]:
@@ -189,7 +189,7 @@ class NewsDatabase:
             return None
         
         except Exception as e:
-            logger.error(f"Error getting daily comparison: {e}")
+            logger.error(f"Error getting daily comparison for date {date}: {e}", exc_info=True)
             return None
     
     def get_headlines_by_date(
@@ -231,7 +231,8 @@ class NewsDatabase:
             return headlines
         
         except Exception as e:
-            logger.error(f"Error getting headlines: {e}")
+            side_filter = f" (side: {political_side})" if political_side else ""
+            logger.error(f"Error getting headlines for date {date}{side_filter}: {e}", exc_info=True)
             return []
     
     def get_recent_comparisons(self, days: int = 7) -> List[DailyComparison]:
@@ -261,7 +262,7 @@ class NewsDatabase:
             return comparisons
         
         except Exception as e:
-            logger.error(f"Error getting recent comparisons: {e}")
+            logger.error(f"Error getting recent comparisons (last {days} days): {e}", exc_info=True)
             return []
     
     def get_openai_call_count(self, date: str) -> int:
@@ -284,7 +285,7 @@ class NewsDatabase:
             return 0
         
         except Exception as e:
-            logger.error(f"Error getting OpenAI call count: {e}")
+            logger.error(f"Error getting OpenAI call count for date {date}: {e}", exc_info=True)
             return 0
     
     def increment_openai_call_count(self, date: str) -> int:
@@ -318,7 +319,7 @@ class NewsDatabase:
             return new_count
         
         except Exception as e:
-            logger.error(f"Error incrementing OpenAI call count: {e}")
+            logger.error(f"Error incrementing OpenAI call count for date {date}: {e}", exc_info=True)
             raise
     
     def close(self) -> None:

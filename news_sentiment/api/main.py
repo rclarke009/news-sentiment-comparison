@@ -4,6 +4,7 @@ FastAPI application main file.
 
 import os
 import logging
+from datetime import datetime
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -55,16 +56,40 @@ app.add_middleware(
 app.include_router(routes.router, prefix="/api/v1")
 
 
+def _get_request_context(request: Request) -> str:
+    """Extract request context for logging (path, method, client IP)."""
+    path = request.url.path
+    method = request.method
+    # Get client IP, honoring X-Forwarded-For when behind a proxy
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        client_ip = forwarded.split(",")[0].strip()
+    else:
+        client_ip = request.client.host if request.client else "unknown"
+    return f"{method} {path} (IP: {client_ip})"
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Global exception handler to ensure all errors return proper JSON responses.
     
     The CORS middleware will automatically add CORS headers to this response.
     """
-    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    context = _get_request_context(request)
+    logger.error(f"Unhandled exception - {context}: {exc}", exc_info=True)
+    
+    # Don't expose internal error details in production
+    error_detail = "Internal server error"
+    if not _is_production:
+        error_detail = f"Internal server error: {str(exc)}"
+    
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": "Internal server error"}
+        content={
+            "detail": error_detail,
+            "error_code": "INTERNAL_SERVER_ERROR",
+            "timestamp": datetime.utcnow().isoformat()
+        }
     )
 
 

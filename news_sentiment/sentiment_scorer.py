@@ -156,7 +156,8 @@ Respond with ONLY a single number between -5 and +5 (e.g., "3.2" or "-1.5"). Do 
             return score
         
         except Exception as e:
-            logger.error(f"LLM API error for headline '{headline.title[:50]}...': {e}", exc_info=True)
+            provider = self.config.llm.provider
+            logger.error(f"LLM API error ({provider}) for headline '{headline.title[:50]}...' (source: {headline.source}): {e}", exc_info=True)
             raise
     
     def _parse_score(self, content: str) -> float:

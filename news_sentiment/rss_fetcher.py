@@ -97,10 +97,10 @@ class RSSFetcher:
             time.sleep(0.3)
             
         except requests.exceptions.RequestException as e:
-            logger.error(f"Error fetching RSS feed from {source_name}: {e}")
+            logger.error(f"Error fetching RSS feed from {source_name} (URL: {feed_url}): {e}", exc_info=True)
             return []
         except Exception as e:
-            logger.error(f"Unexpected error parsing RSS feed from {source_name}: {e}")
+            logger.error(f"Unexpected error parsing RSS feed from {source_name} (URL: {feed_url}): {e}", exc_info=True)
             return []
         
         logger.info(f"Successfully fetched {len(headlines)} headlines from {source_name} RSS feed")
@@ -176,7 +176,8 @@ class RSSFetcher:
             )
         
         except Exception as e:
-            logger.error(f"Error parsing RSS entry from {source_name}: {e}")
+            entry_title = entry.get("title", "unknown")[:50] if hasattr(entry, "get") else "unknown"
+            logger.error(f"Error parsing RSS entry from {source_name} (title: '{entry_title}...'): {e}", exc_info=True)
             return None
     
     def fetch_rss_sources(
