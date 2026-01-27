@@ -32,8 +32,9 @@ class NewsCollector:
     def __init__(self):
         """Initialize the collector with all required components."""
         self.fetcher = NewsFetcher()
-        self.scorer = SentimentScorer()
         self.database = NewsDatabase()
+        # Pass database to scorer for rate limiting
+        self.scorer = SentimentScorer(database=self.database)
     
     def collect_daily_news(self, target_date: Optional[date] = None) -> DailyComparison:
         """

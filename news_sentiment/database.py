@@ -69,6 +69,10 @@ class NewsDatabase:
             daily_comparisons.create_index([("date", 1)], unique=True)
             daily_comparisons.create_index([("created_at", -1)])
             
+            # API rate limits collection indexes
+            api_rate_limits = self.db.api_rate_limits
+            api_rate_limits.create_index([("date", 1)], unique=True)
+            
             logger.debug("Database indexes created")
         except Exception as e:
             logger.warning(f"Error creating indexes: {e}")
@@ -259,6 +263,63 @@ class NewsDatabase:
         except Exception as e:
             logger.error(f"Error getting recent comparisons: {e}")
             return []
+    
+    def get_openai_call_count(self, date: str) -> int:
+        """
+        Get current OpenAI API call count for a specific date.
+        
+        Args:
+            date: Date string in YYYY-MM-DD format
+            
+        Returns:
+            Current call count (0 if no record exists)
+        """
+        try:
+            collection = self.db.api_rate_limits
+            doc = collection.find_one({"date": date})
+            
+            if doc:
+                return doc.get("openai_calls", 0)
+            
+            return 0
+        
+        except Exception as e:
+            logger.error(f"Error getting OpenAI call count: {e}")
+            return 0
+    
+    def increment_openai_call_count(self, date: str) -> int:
+        """
+        Increment OpenAI API call count for a specific date.
+        Uses atomic operation to prevent race conditions.
+        
+        Args:
+            date: Date string in YYYY-MM-DD format
+            
+        Returns:
+            New call count after increment
+        """
+        try:
+            collection = self.db.api_rate_limits
+            
+            # Use find_one_and_update with upsert for atomic increment
+            result = collection.find_one_and_update(
+                {"date": date},
+                {
+                    "$inc": {"openai_calls": 1},
+                    "$set": {"updated_at": datetime.utcnow()},
+                    "$setOnInsert": {"date": date}
+                },
+                upsert=True,
+                return_document=True
+            )
+            
+            new_count = result.get("openai_calls", 1)
+            logger.debug(f"Incremented OpenAI call count for {date}: {new_count}")
+            return new_count
+        
+        except Exception as e:
+            logger.error(f"Error incrementing OpenAI call count: {e}")
+            raise
     
     def close(self) -> None:
         """Close database connection."""

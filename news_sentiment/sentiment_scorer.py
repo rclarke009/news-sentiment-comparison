@@ -5,11 +5,14 @@ Sentiment scoring module using LLM APIs (Groq or OpenAI).
 import logging
 import re
 from typing import Optional
+from datetime import datetime
 from groq import Groq
 from openai import OpenAI
 
 from news_sentiment.config import get_config
 from news_sentiment.models import Headline
+from news_sentiment.rate_limiter import RateLimiter, RateLimitExceeded
+from news_sentiment.database import NewsDatabase
 
 logger = logging.getLogger(__name__)
 
@@ -17,11 +20,21 @@ logger = logging.getLogger(__name__)
 class SentimentScorer:
     """Scores headlines for uplift/positivity using LLM APIs."""
     
-    def __init__(self):
-        """Initialize the sentiment scorer with configuration."""
+    def __init__(self, database: Optional[NewsDatabase] = None):
+        """
+        Initialize the sentiment scorer with configuration.
+        
+        Args:
+            database: Optional NewsDatabase instance for rate limiting (required for OpenAI rate limiting)
+        """
         self.config = get_config()
         self.llm_client = self._create_client()
         self.puff_keywords = self.config.puff_pieces.keywords
+        self.rate_limiter: Optional[RateLimiter] = None
+        
+        # Initialize rate limiter if database is provided
+        if database is not None:
+            self.rate_limiter = RateLimiter(database, daily_limit=20)
     
     def _create_client(self):
         """Create the appropriate LLM client based on configuration."""
@@ -83,6 +96,19 @@ class SentimentScorer:
         Returns:
             Score from -5 to +5
         """
+        # Check rate limit for OpenAI before making API call
+        if self.config.llm.provider == "openai" and self.rate_limiter is not None:
+            try:
+                # Get current date for rate limiting
+                current_date = datetime.utcnow().date().isoformat()
+                self.rate_limiter.check_and_increment("openai", current_date)
+            except RateLimitExceeded as e:
+                logger.warning(
+                    f"Rate limit exceeded for headline '{headline.title[:50]}...': {e.message}"
+                )
+                # Return neutral score when rate limit is exceeded
+                return 0.0
+        
         # Construct prompt
         text = headline.title
         if headline.description:
