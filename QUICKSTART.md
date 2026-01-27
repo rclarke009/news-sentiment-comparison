@@ -158,7 +158,30 @@ python scripts/smoke_test_production.py --base-url https://your-api.onrender.com
 - **Debugging prod vs local** — When something works locally but not in production, run the script against your production URL to see which endpoint fails.
 - **Ongoing checks** — Optionally run from CI or a separate cron to detect outages.
 
-The script exits 0 on success and 1 if any check fails. Use `--base-url` when your API service has a different hostname than the blueprint default (e.g. you named the service `sentiment-lens` → `https://sentiment-lens.onrender.com`).
+The script exits 0 on success and 1 if any check fails. Use `--base-url` when your API service has a different hostname than the blueprint default (e.g. you named the service `sentiment-lens` → `https://sentiment-lens.onrender.com`). For Playwright E2E (frontend + API), see **Playwright E2E** below.
+
+### Playwright E2E (frontend + API)
+
+For browser-based checks of the frontend and API, use Playwright from `frontend/`:
+
+```bash
+cd frontend
+npm install
+npx playwright install   # first time only
+```
+
+- **Local:** Run API and frontend (`uvicorn …` and `npm run dev`), then:
+  - `npm run test:e2e` — frontend smoke + API tests
+  - `npm run test:api` — API tests only
+- **Production:** After deploying:
+  - `npm run test:api:prod` — API tests against production (e.g. Render).
+  - `npm run test:e2e:prod` — E2E using production base URL. To test the live **frontend** (e.g. Netlify), run:
+
+    ```bash
+    PLAYWRIGHT_BASE_URL=https://sentimentlens.netlify.app npm run test:e2e
+    ```
+
+Use these **after deploys** alongside the Python smoke script: smoke script for API-only checks, Playwright for frontend + API.
 
 ## Troubleshooting
 

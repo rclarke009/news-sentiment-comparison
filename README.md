@@ -233,7 +233,32 @@ python scripts/smoke_test_production.py
 python scripts/smoke_test_production.py --base-url https://your-api.onrender.com
 ```
 
-Use it **after deploys**, **after env var changes**, or when debugging prod vs local. See **QUICKSTART.md** → [Smoke testing production](QUICKSTART.md#smoke-testing-production) for when and how.
+Use it **after deploys**, **after env var changes**, or when debugging prod vs local. See **QUICKSTART.md** → [Smoke testing production](QUICKSTART.md#smoke-testing-production) for when and how. For frontend and API checks in a browser, see **Playwright E2E** below.
+
+### Playwright E2E (frontend + API)
+
+The frontend uses Playwright for browser E2E and API checks. Run from `frontend/`:
+
+```bash
+cd frontend
+npm install
+npx playwright install   # first time only: installs browsers
+```
+
+| Script | What it runs | Target |
+|--------|--------------|--------|
+| `npm run test:e2e` | Frontend smoke + API tests | Local (dev server on :5173, API on :8000) |
+| `npm run test:e2e:prod` | Frontend smoke + API tests | Production base URL |
+| `npm run test:api` | API tests only | Local API |
+| `npm run test:api:prod` | API tests only | Production API |
+
+**Local:** Start the API (`uvicorn …`) and frontend (`npm run dev`) in separate terminals, then run `npm run test:e2e` or `npm run test:api` from `frontend/`.
+
+**Production:** Use `test:e2e:prod` / `test:api:prod` to hit deployed services (e.g. after a Render deploy). For frontend E2E against your live site (e.g. Netlify), set `PLAYWRIGHT_BASE_URL` to the frontend URL:
+
+```bash
+PLAYWRIGHT_BASE_URL=https://sentimentlens.netlify.app npm run test:e2e
+```
 
 ### Code Formatting
 
