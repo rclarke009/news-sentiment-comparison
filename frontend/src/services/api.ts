@@ -28,6 +28,8 @@ export interface SideStats {
   total_headlines: number;
   most_uplifting: MostUpliftingStory | null;
   score_distribution: Record<string, number>;
+  avg_local_sentiment?: number;
+  local_positive_percentage?: number;
 }
 
 export interface MostUpliftingStory {
@@ -56,6 +58,35 @@ export interface StatsResponse {
 export interface SourcesResponse {
   conservative: string[];
   liberal: string[];
+}
+
+export interface ModelComparisonResponse {
+  total_headlines: number;
+  agreement_rate: number;
+  avg_score_difference: number;
+  correlation: number;
+  divergence_examples: Array<{
+    title: string;
+    source: string;
+    political_side: string;
+    llm_score: number;
+    local_score: number;
+    local_label: string;
+    local_confidence: number;
+    difference: number;
+  }>;
+  conservative_stats: {
+    count: number;
+    correlation: number;
+    avg_llm: number;
+    avg_local: number;
+  };
+  liberal_stats: {
+    count: number;
+    correlation: number;
+    avg_llm: number;
+    avg_local: number;
+  };
 }
 
 export const apiService = {
@@ -121,6 +152,19 @@ export const apiService = {
    */
   healthCheck: async (): Promise<{ status: string; timestamp: string }> => {
     const response = await api.get('/health');
+    return response.data;
+  },
+
+  /**
+   * Get model comparison statistics
+   */
+  getModelComparison: async (
+    days: number = 30,
+    source?: 'conservative' | 'liberal'
+  ): Promise<ModelComparisonResponse> => {
+    const response = await api.get<ModelComparisonResponse>('/model-comparison', {
+      params: { days, source },
+    });
     return response.data;
   },
 };

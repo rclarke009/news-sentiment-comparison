@@ -18,8 +18,10 @@ const TrendChart: React.FC = () => {
 
       const chartData = response.comparisons.map((comp) => ({
         date: comp.date,
-        conservative: comp.conservative.avg_uplift,
-        liberal: comp.liberal.avg_uplift,
+        conservativeLLM: comp.conservative.avg_uplift,
+        liberalLLM: comp.liberal.avg_uplift,
+        conservativeLocal: comp.conservative.avg_local_sentiment ?? null,
+        liberalLocal: comp.liberal.avg_local_sentiment ?? null,
       }));
 
 
@@ -59,26 +61,50 @@ const TrendChart: React.FC = () => {
         </select>
       </div>
       
-      <ResponsiveContainer width="100%" height={300}>
+      <ResponsiveContainer width="100%" height={400}>
         <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="date" />
           <YAxis />
           <Tooltip />
           <Legend />
+          {/* LLM Model Lines - Solid */}
           <Line
             type="monotone"
-            dataKey="conservative"
+            dataKey="conservativeLLM"
             stroke="#dc2626"
             strokeWidth={2}
-            name="Conservative"
+            name="Conservative (LLM)"
+            dot={{ r: 4 }}
           />
           <Line
             type="monotone"
-            dataKey="liberal"
+            dataKey="liberalLLM"
             stroke="#2563eb"
             strokeWidth={2}
-            name="Liberal"
+            name="Liberal (LLM)"
+            dot={{ r: 4 }}
+          />
+          {/* Local Model Lines - Dashed */}
+          <Line
+            type="monotone"
+            dataKey="conservativeLocal"
+            stroke="#f87171"
+            strokeWidth={2}
+            strokeDasharray="5 5"
+            name="Conservative (Local)"
+            dot={{ r: 3 }}
+            connectNulls={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="liberalLocal"
+            stroke="#60a5fa"
+            strokeWidth={2}
+            strokeDasharray="5 5"
+            name="Liberal (Local)"
+            dot={{ r: 3 }}
+            connectNulls={false}
           />
         </LineChart>
       </ResponsiveContainer>

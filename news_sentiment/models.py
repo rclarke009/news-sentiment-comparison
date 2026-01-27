@@ -19,6 +19,10 @@ class Headline(BaseModel):
     uplift_score: Optional[float] = Field(None, description="Sentiment uplift score (-5 to +5)")
     keyword_boost: float = Field(0.0, description="Additional boost from puff piece keywords")
     final_score: Optional[float] = Field(None, description="Final score after keyword boost")
+    local_sentiment_score: Optional[float] = Field(None, description="Local model sentiment score (-5 to +5)")
+    local_sentiment_label: Optional[str] = Field(None, description="Local model label (POSITIVE/NEGATIVE)")
+    local_sentiment_confidence: Optional[float] = Field(None, description="Local model confidence (0.0 to 1.0)")
+    score_difference: Optional[float] = Field(None, description="Difference between LLM and local scores (LLM - local)")
     collected_at: datetime = Field(default_factory=datetime.utcnow, description="Collection timestamp")
     
     class Config:
@@ -69,6 +73,8 @@ class SideStatistics(BaseModel):
         default_factory=dict,
         description="Count of headlines by score range"
     )
+    avg_local_sentiment: Optional[float] = Field(None, description="Average local model sentiment score (-5 to +5)")
+    local_positive_percentage: Optional[float] = Field(None, description="Percentage of headlines with positive local score")
 
 
 class SourceConfig(BaseModel):

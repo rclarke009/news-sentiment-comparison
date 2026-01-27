@@ -13,6 +13,7 @@ from news_sentiment.config import get_config
 from news_sentiment.models import Headline
 from news_sentiment.rate_limiter import RateLimiter, RateLimitExceeded
 from news_sentiment.database import NewsDatabase
+from news_sentiment.local_sentiment import LocalSentimentScorer
 
 logger = logging.getLogger(__name__)
 
@@ -20,17 +21,19 @@ logger = logging.getLogger(__name__)
 class SentimentScorer:
     """Scores headlines for uplift/positivity using LLM APIs."""
     
-    def __init__(self, database: Optional[NewsDatabase] = None):
+    def __init__(self, database: Optional[NewsDatabase] = None, local_scorer: Optional[LocalSentimentScorer] = None):
         """
         Initialize the sentiment scorer with configuration.
         
         Args:
             database: Optional NewsDatabase instance for rate limiting (required for OpenAI rate limiting)
+            local_scorer: Optional LocalSentimentScorer instance for local model comparison
         """
         self.config = get_config()
         self.llm_client = self._create_client()
         self.puff_keywords = self.config.puff_pieces.keywords
         self.rate_limiter: Optional[RateLimiter] = None
+        self.local_scorer: Optional[LocalSentimentScorer] = local_scorer
         
         # Initialize rate limiter if database is provided
         if database is not None:
@@ -58,8 +61,50 @@ class SentimentScorer:
             Uplift score from -5 (very negative) to +5 (very positive/uplifting)
         """
         try:
+            # Run local model first (if available)
+            local_score = None
+            local_label = None
+            local_confidence = None
+            
+            if self.local_scorer is not None:
+                try:
+                    # Prepare text for local model
+                    text = headline.title
+                    if headline.description:
+                        text += f" {headline.description}"
+                    
+                    # Get local sentiment
+                    local_result = self.local_scorer.score_text(text)
+                    local_score = local_result["score"]
+                    local_label = local_result["label"]
+                    local_confidence = local_result["confidence"]
+                    
+                    # Store local scores in headline
+                    headline.local_sentiment_score = local_score
+                    headline.local_sentiment_label = local_label
+                    headline.local_sentiment_confidence = local_confidence
+                    
+                    logger.debug(
+                        f"Local model scored '{headline.title[:50]}...': "
+                        f"label={local_label}, confidence={local_confidence:.2f}, score={local_score:.2f}"
+                    )
+                except Exception as e:
+                    logger.warning(f"Local model scoring failed for '{headline.title[:50]}...': {e}")
+            
             # Get base score from LLM
             base_score = self._get_llm_score(headline)
+            
+            # Calculate score difference if both scores available
+            if local_score is not None:
+                score_diff = base_score - local_score
+                headline.score_difference = score_diff
+                
+                # Log significant differences for analysis
+                if abs(score_diff) > 2.0:
+                    logger.info(
+                        f"Large score difference for '{headline.title[:50]}...': "
+                        f"LLM={base_score:.2f}, Local={local_score:.2f}, diff={score_diff:.2f}"
+                    )
             
             # Apply keyword boost for puff pieces
             keyword_boost = self._calculate_keyword_boost(headline)
@@ -203,6 +248,21 @@ Respond with ONLY a single number between -5 and +5 (e.g., "3.2" or "-1.5"). Do 
         
         logger.warning(f"Could not parse score from LLM response: '{content}' (length: {len(content)})")
         return 0.0
+    
+    def _should_use_llm(self, local_confidence: float) -> bool:
+        """
+        Determine if LLM should be called based on local model confidence.
+        This sets up cost optimization - can be enabled later via config.
+        
+        Args:
+            local_confidence: Local model confidence score (0.0 to 1.0)
+            
+        Returns:
+            True if LLM should be called (when confidence is low)
+        """
+        # For now, always return True (always use LLM)
+        # Future: return local_confidence < 0.7 for cost optimization
+        return True
     
     def _calculate_keyword_boost(self, headline: Headline) -> float:
         """

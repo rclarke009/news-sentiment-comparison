@@ -30,6 +30,8 @@ class SideStatsResponse(BaseModel):
     total_headlines: int
     most_uplifting: Optional[MostUpliftingResponse]
     score_distribution: dict[str, int]
+    avg_local_sentiment: Optional[float] = None
+    local_positive_percentage: Optional[float] = None
 
 
 class DailyComparisonResponse(BaseModel):
@@ -60,3 +62,14 @@ class SourcesResponse(BaseModel):
     """Response schema for configured news sources (display names only)."""
     conservative: list[str]
     liberal: list[str]
+
+
+class ModelComparisonResponse(BaseModel):
+    """Response schema for model comparison statistics."""
+    total_headlines: int
+    agreement_rate: float  # Percentage where both models agree on positive/negative
+    avg_score_difference: float  # Average absolute difference between scores
+    correlation: float  # Correlation coefficient between LLM and local scores
+    divergence_examples: list[dict]  # Examples where scores differ significantly
+    conservative_stats: dict
+    liberal_stats: dict

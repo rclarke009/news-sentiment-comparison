@@ -32,9 +32,11 @@ class RSSFetcher:
         # Retry strategy - DO NOT retry on 429 errors (rate limits)
         # 429 errors should be handled explicitly to avoid wasting quota
         # Only retry on transient server errors (500, 502, 503, 504)
+        # backoff_jitter adds randomization to prevent thundering herd if multiple instances retry simultaneously
         retry_strategy = Retry(
             total=3,
             backoff_factor=1,
+            backoff_jitter=0.1,  # 10% randomization to prevent synchronized retries
             status_forcelist=[500, 502, 503, 504],  # Removed 429 - handle explicitly
             allowed_methods=["GET"]
         )

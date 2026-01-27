@@ -16,6 +16,7 @@ from news_sentiment.models import (
 from news_sentiment.news_fetcher import NewsFetcher
 from news_sentiment.sentiment_scorer import SentimentScorer
 from news_sentiment.database import NewsDatabase
+from news_sentiment.local_sentiment import LocalSentimentScorer
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +28,15 @@ class NewsCollector:
         """Initialize the collector with all required components."""
         self.fetcher = NewsFetcher()
         self.database = NewsDatabase()
-        # Pass database to scorer for rate limiting
-        self.scorer = SentimentScorer(database=self.database)
+        # Initialize local sentiment scorer
+        try:
+            self.local_scorer = LocalSentimentScorer()
+            logger.info("Local sentiment scorer initialized")
+        except Exception as e:
+            logger.warning(f"Failed to initialize local sentiment scorer: {e}. Continuing without local model.")
+            self.local_scorer = None
+        # Pass database and local scorer to sentiment scorer
+        self.scorer = SentimentScorer(database=self.database, local_scorer=self.local_scorer)
     
     def collect_daily_news(self, target_date: Optional[date] = None) -> DailyComparison:
         """
@@ -114,13 +122,23 @@ class NewsCollector:
                 total_headlines=0
             )
         
-        # Calculate average uplift
+        # Calculate average uplift (LLM scores)
         scores = [h.final_score for h in headlines if h.final_score is not None]
         avg_uplift = sum(scores) / len(scores) if scores else 0.0
         
-        # Calculate positive percentage
+        # Calculate positive percentage (LLM scores)
         positive_count = sum(1 for s in scores if s > 0)
         positive_percentage = (positive_count / len(scores) * 100) if scores else 0.0
+        
+        # Calculate local model statistics
+        local_scores = [h.local_sentiment_score for h in headlines if h.local_sentiment_score is not None]
+        avg_local_sentiment = None
+        local_positive_percentage = None
+        
+        if local_scores:
+            avg_local_sentiment = sum(local_scores) / len(local_scores)
+            local_positive_count = sum(1 for s in local_scores if s > 0)
+            local_positive_percentage = (local_positive_count / len(local_scores) * 100) if local_scores else 0.0
         
         # Find most uplifting story
         most_uplifting = None
@@ -162,7 +180,9 @@ class NewsCollector:
             positive_percentage=positive_percentage,
             total_headlines=len(headlines),
             most_uplifting=most_uplifting,
-            score_distribution=dict(distribution)
+            score_distribution=dict(distribution),
+            avg_local_sentiment=avg_local_sentiment,
+            local_positive_percentage=local_positive_percentage
         )
     
     def close(self) -> None:

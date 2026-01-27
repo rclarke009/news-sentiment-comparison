@@ -100,4 +100,47 @@ test.describe('API Endpoints', () => {
     const invalidResponse = await request.get(`${API_BASE_URL}/most-uplifting?side=invalid`);
     expect(invalidResponse.status()).toBe(400);
   });
+
+  test('collect endpoint requires authentication and accepts 429 rate limit', async ({ request }) => {
+    // Test without authentication - should return 401
+    const noAuthResponse = await request.post(`${API_BASE_URL}/collect`);
+    expect(noAuthResponse.status()).toBe(401);
+    
+    // Test with authentication - accepts 200 (success), 429 (rate limit), or 503 (not configured)
+    // Get CRON_SECRET_KEY from environment or skip test if not available
+    const cronSecret = process.env.CRON_SECRET_KEY || process.env.PLAYWRIGHT_CRON_SECRET;
+    
+    if (!cronSecret) {
+      // If no secret is available, just verify endpoint exists (will get 503 or 401)
+      const response = await request.post(`${API_BASE_URL}/collect`, {
+        headers: { 'X-Cron-Secret': 'test-secret' }
+      });
+      // Accept 401 (wrong secret), 503 (not configured), or 429 (rate limit) as valid
+      expect([401, 503, 429]).toContain(response.status());
+    } else {
+      // With valid secret, test the endpoint
+      const response = await request.post(`${API_BASE_URL}/collect`, {
+        headers: { 'X-Cron-Secret': cronSecret }
+      });
+      
+      // Accept 200 (success), 429 (rate limit from NewsAPI), or 503 (not configured) as valid responses
+      if (response.status() === 200) {
+        const body = await response.json();
+        expect(body).toHaveProperty('status');
+        expect(body.status).toBe('success');
+      } else if (response.status() === 429) {
+        // 429 is expected when NewsAPI rate limit is exceeded (100 requests/day on free tier)
+        const body = await response.json();
+        expect(body).toHaveProperty('detail');
+        expect(body.detail).toContain('rate limit');
+      } else if (response.status() === 503) {
+        // 503 means endpoint is not configured
+        const body = await response.json();
+        expect(body).toHaveProperty('detail');
+      } else {
+        // Any other status is unexpected
+        throw new Error(`Unexpected status code: ${response.status()}`);
+      }
+    }
+  });
 });

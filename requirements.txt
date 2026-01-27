@@ -21,3 +21,7 @@ python-dateutil==2.8.2
 # Utilities
 httpx==0.26.0
 feedparser==6.0.10
+
+# Local ML models
+transformers>=4.35.0
+torch>=2.0.0

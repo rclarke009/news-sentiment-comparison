@@ -3,7 +3,7 @@ MongoDB database operations for news sentiment data.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 from pymongo import MongoClient
 from pymongo.collection import Collection
@@ -321,6 +321,56 @@ class NewsDatabase:
         except Exception as e:
             logger.error(f"Error incrementing OpenAI call count for date {date}: {e}", exc_info=True)
             raise
+    
+    def get_headlines_for_comparison(
+        self,
+        days: int = 30,
+        political_side: Optional[str] = None
+    ) -> List[Headline]:
+        """
+        Get headlines with both LLM and local scores for model comparison.
+        
+        Args:
+            days: Number of days to look back
+            political_side: Optional filter by 'conservative' or 'liberal'
+            
+        Returns:
+            List of Headline objects with both scores
+        """
+        try:
+            collection = self.db.headlines
+            cutoff_date = (datetime.utcnow() - timedelta(days=days)).date().isoformat()
+            
+            query = {
+                "date": {"$gte": cutoff_date},
+                "uplift_score": {"$exists": True, "$ne": None},
+                "local_sentiment_score": {"$exists": True, "$ne": None}
+            }
+            
+            if political_side:
+                query["political_side"] = political_side
+            
+            docs = collection.find(query).sort("date", -1)
+            
+            headlines = []
+            for doc in docs:
+                # Convert ISO strings back to datetime
+                if "published_at" in doc and isinstance(doc["published_at"], str):
+                    doc["published_at"] = datetime.fromisoformat(doc["published_at"])
+                if "collected_at" in doc and isinstance(doc["collected_at"], str):
+                    doc["collected_at"] = datetime.fromisoformat(doc["collected_at"])
+                # Convert URL string back to HttpUrl
+                if "url" in doc:
+                    doc["url"] = str(doc["url"])
+                
+                headlines.append(Headline(**doc))
+            
+            return headlines
+        
+        except Exception as e:
+            side_filter = f" (side: {political_side})" if political_side else ""
+            logger.error(f"Error getting headlines for comparison (last {days} days){side_filter}: {e}", exc_info=True)
+            return []
     
     def close(self) -> None:
         """Close database connection."""

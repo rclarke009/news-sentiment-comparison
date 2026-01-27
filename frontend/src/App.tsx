@@ -5,6 +5,7 @@ import Header from './components/Header';
 import MostUpliftingCard from './components/MostUpliftingCard';
 import SourcesList from './components/SourcesList';
 import TrendChart from './components/TrendChart';
+import ModelComparisonCard from './components/ModelComparisonCard';
 
 function App() {
   const [comparison, setComparison] = useState<DailyComparison | null>(null);
@@ -224,6 +225,11 @@ function App() {
 
         {/* Daily Comparison */}
         <DailyComparisonView comparison={comparison} />
+
+        {/* Model Comparison Card */}
+        <div className="mt-8">
+          <ModelComparisonCard />
+        </div>
 
         {/* Trend Chart */}
         <div className="mt-8">

@@ -3,6 +3,7 @@ News fetching module using NewsAPI.org and RSS feeds.
 """
 
 import logging
+import time
 from datetime import datetime
 from typing import List, Optional
 import requests
@@ -32,9 +33,11 @@ class NewsFetcher:
         # Retry strategy - DO NOT retry on 429 errors (rate limits)
         # 429 errors are handled explicitly in fetch_headlines to avoid wasting API quota
         # Only retry on transient server errors (500, 502, 503, 504)
+        # backoff_jitter adds randomization to prevent thundering herd if multiple instances retry simultaneously
         retry_strategy = Retry(
             total=self.config.news_api.max_retries,
             backoff_factor=2,
+            backoff_jitter=0.1,  # 10% randomization to prevent synchronized retries
             status_forcelist=[500, 502, 503, 504],  # Removed 429 - we handle it explicitly
             allowed_methods=["GET"]
         )
