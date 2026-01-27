@@ -20,6 +20,7 @@ from news_sentiment.api.schemas import (
     MostUpliftingResponse,
     StatsResponse,
     SourcesResponse,
+    ModelComparisonResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -73,15 +74,35 @@ async def get_sources():
 
 @router.get("/health", tags=["health"])
 async def health_check(request: Request):
-    """Health check endpoint."""
+    """
+    Simple health check endpoint (app is running).
+    
+    Used by keep-alive pings, Render health checks, and smoke tests.
+    Returns 200 as long as the app is running, without checking database connectivity.
+    """
+    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
+
+
+@router.get("/health/db", tags=["health"])
+async def health_check_db(request: Request):
+    """
+    Full health check endpoint (app + database connectivity).
+    
+    Use this for monitoring/debugging when you need to verify database connectivity.
+    Returns 503 if database connection fails.
+    """
     try:
         # Test database connection
         db = get_db()
         db.client.admin.command("ping")
-        return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
+        return {
+            "status": "healthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "database": "connected"
+        }
     except Exception as e:
         context = _get_request_context(request)
-        logger.error(f"Health check failed - {context}: {e}", exc_info=True)
+        logger.error(f"Health check (DB) failed - {context}: {e}", exc_info=True)
         raise HTTPException(status_code=503, detail="Service unhealthy")
 
 
@@ -393,6 +414,146 @@ def _convert_comparison_to_response(comparison: DailyComparison) -> DailyCompari
         raise ValueError(f"Failed to convert comparison data: {str(e)}")
 
 
+@router.get("/model-comparison", response_model=ModelComparisonResponse, tags=["statistics"])
+async def get_model_comparison(
+    days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+    source: Optional[str] = Query(None, description="Filter by 'conservative' or 'liberal'"),
+    request: Request = None
+):
+    """
+    Get comparison statistics between LLM and local sentiment models.
+    
+    Returns correlation stats, agreement rate, and divergence examples.
+    """
+    if source and source not in ["conservative", "liberal"]:
+        raise HTTPException(status_code=400, detail="source must be 'conservative' or 'liberal'")
+    
+    try:
+        import statistics
+        from collections import defaultdict
+        
+        db = get_db()
+        headlines = db.get_headlines_for_comparison(days=days, political_side=source)
+        
+        if not headlines:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No headlines with both scores found for the last {days} days"
+            )
+        
+        # Calculate statistics
+        llm_scores = []
+        local_scores = []
+        score_differences = []
+        agreements = 0  # Both positive or both negative
+        total_comparable = 0
+        
+        # Track by political side
+        conservative_llm = []
+        conservative_local = []
+        liberal_llm = []
+        liberal_local = []
+        
+        # Find divergence examples (large differences)
+        divergence_examples = []
+        
+        for headline in headlines:
+            if headline.uplift_score is not None and headline.local_sentiment_score is not None:
+                llm_score = headline.uplift_score
+                local_score = headline.local_sentiment_score
+                
+                llm_scores.append(llm_score)
+                local_scores.append(local_score)
+                
+                diff = abs(llm_score - local_score)
+                score_differences.append(diff)
+                
+                # Check agreement (both positive or both negative)
+                if (llm_score > 0 and local_score > 0) or (llm_score < 0 and local_score < 0):
+                    agreements += 1
+                total_comparable += 1
+                
+                # Track by side
+                if headline.political_side == "conservative":
+                    conservative_llm.append(llm_score)
+                    conservative_local.append(local_score)
+                else:
+                    liberal_llm.append(llm_score)
+                    liberal_local.append(local_score)
+                
+                # Collect divergence examples (difference > 2.0)
+                if diff > 2.0 and len(divergence_examples) < 10:
+                    divergence_examples.append({
+                        "title": headline.title[:100],
+                        "source": headline.source,
+                        "political_side": headline.political_side,
+                        "llm_score": round(llm_score, 2),
+                        "local_score": round(local_score, 2),
+                        "local_label": headline.local_sentiment_label,
+                        "local_confidence": round(headline.local_sentiment_confidence or 0.0, 2),
+                        "difference": round(diff, 2)
+                    })
+        
+        # Calculate correlation
+        correlation = 0.0
+        if len(llm_scores) > 1:
+            try:
+                correlation = statistics.correlation(llm_scores, local_scores)
+            except Exception:
+                # Fallback if correlation calculation fails
+                correlation = 0.0
+        
+        # Calculate agreement rate
+        agreement_rate = (agreements / total_comparable * 100) if total_comparable > 0 else 0.0
+        
+        # Calculate average score difference
+        avg_diff = statistics.mean(score_differences) if score_differences else 0.0
+        
+        # Calculate side-specific stats
+        conservative_correlation = 0.0
+        if len(conservative_llm) > 1:
+            try:
+                conservative_correlation = statistics.correlation(conservative_llm, conservative_local)
+            except Exception:
+                pass
+        
+        liberal_correlation = 0.0
+        if len(liberal_llm) > 1:
+            try:
+                liberal_correlation = statistics.correlation(liberal_llm, liberal_local)
+            except Exception:
+                pass
+        
+        return ModelComparisonResponse(
+            total_headlines=len(headlines),
+            agreement_rate=round(agreement_rate, 2),
+            avg_score_difference=round(avg_diff, 2),
+            correlation=round(correlation, 3),
+            divergence_examples=divergence_examples,
+            conservative_stats={
+                "count": len(conservative_llm),
+                "correlation": round(conservative_correlation, 3),
+                "avg_llm": round(statistics.mean(conservative_llm), 2) if conservative_llm else 0.0,
+                "avg_local": round(statistics.mean(conservative_local), 2) if conservative_local else 0.0
+            },
+            liberal_stats={
+                "count": len(liberal_llm),
+                "correlation": round(liberal_correlation, 3),
+                "avg_llm": round(statistics.mean(liberal_llm), 2) if liberal_llm else 0.0,
+                "avg_local": round(statistics.mean(liberal_local), 2) if liberal_local else 0.0
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        context = _get_request_context(request) if request else "unknown"
+        logger.error(f"Error fetching model comparison - {context}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error while fetching model comparison"
+        )
+
+
 def _convert_side_stats(side_data: dict) -> dict:
     """Convert side statistics to response format."""
     try:
@@ -410,7 +571,9 @@ def _convert_side_stats(side_data: dict) -> dict:
                 "final_score": most_uplifting["final_score"],
                 "published_at": most_uplifting["published_at"].isoformat() if isinstance(most_uplifting["published_at"], datetime) else str(most_uplifting["published_at"])
             } if most_uplifting else None,
-            "score_distribution": side_data.get("score_distribution", {})
+            "score_distribution": side_data.get("score_distribution", {}),
+            "avg_local_sentiment": side_data.get("avg_local_sentiment"),
+            "local_positive_percentage": side_data.get("local_positive_percentage")
         }
     except (KeyError, TypeError, AttributeError) as e:
         logger.error(f"Error converting side stats: {e}. Side data: {side_data}", exc_info=True)
