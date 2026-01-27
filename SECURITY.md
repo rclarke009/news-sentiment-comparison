@@ -21,7 +21,7 @@ Add it to your workflow (e.g. pre-commit hook or CI step) to reduce the risk of 
 
 ## Production vs development
 
-- **API docs** (`/docs`, `/redoc`, `/openapi.json`) are disabled when `ENV=production` or `RENDER=true`.
+- **API docs** (`/docs`, `/redoc`, `/openapi.json`) are disabled by default when `ENV=production` or `RENDER=true`. They can be enabled in production by setting `ENABLE_DOCS=true` (useful for public APIs where you want to allow others to use your API).
 - **Debug logging** in the frontend runs only when `import.meta.env.DEV` is true (e.g. `npm run dev`); production builds do not log debug output.
 
 ## Secure configuration

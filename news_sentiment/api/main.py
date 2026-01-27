@@ -16,16 +16,19 @@ from news_sentiment.api import routes
 logger = logging.getLogger(__name__)
 config = get_config()
 
-# Disable interactive docs in production to reduce attack surface
+# Allow enabling docs in production via ENABLE_DOCS environment variable
+# Docs are disabled by default in production to reduce attack surface
 _is_production = os.getenv("ENV") == "production" or os.getenv("RENDER") == "true"
+_enable_docs = os.getenv("ENABLE_DOCS", "false").lower() == "true"
+_docs_enabled = not _is_production or _enable_docs
 
 app = FastAPI(
     title="News Sentiment Comparison API",
     description="API for comparing sentiment and uplift scores between conservative and liberal news sources",
     version="0.1.0",
-    docs_url=None if _is_production else "/docs",
-    redoc_url=None if _is_production else "/redoc",
-    openapi_url=None if _is_production else "/openapi.json",
+    docs_url="/docs" if _docs_enabled else None,
+    redoc_url="/redoc" if _docs_enabled else None,
+    openapi_url="/openapi.json" if _docs_enabled else None,
 )
 
 
@@ -101,7 +104,7 @@ async def root():
         "version": "0.1.0",
         "api": "/api/v1",
     }
-    if not _is_production:
+    if _docs_enabled:
         payload["docs"] = "/docs"
     return payload
 
