@@ -24,7 +24,7 @@ const Header: React.FC<HeaderProps> = ({ selectedDate, onDateChange }) => {
               value={selectedDate || ''}
               onChange={(e) => {
                 const newDate = e.target.value;
-                console.log("MYDEBUG → Date picker changed:", newDate, "from", selectedDate);
+                if (import.meta.env.DEV) console.log("MYDEBUG → Date picker changed:", newDate, "from", selectedDate);
                 onDateChange(newDate);
               }}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"

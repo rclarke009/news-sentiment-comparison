@@ -6,7 +6,7 @@ import os
 import logging
 from datetime import date, datetime
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Query, Header
+from fastapi import APIRouter, HTTPException, Query, Header, Request
 from fastapi.responses import JSONResponse
 import requests
 
@@ -271,31 +271,40 @@ async def get_stats(days: int = Query(30, ge=1, le=365)):
         )
 
 
+def _client_ip(request: Request) -> str:
+    """Return client IP, honoring X-Forwarded-For when behind a proxy (e.g. Render)."""
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
 @router.post("/collect", tags=["collection"])
 async def trigger_collection(
-    x_cron_secret: Optional[str] = Header(None, alias="X-Cron-Secret")
+    request: Request,
+    x_cron_secret: Optional[str] = Header(None, alias="X-Cron-Secret"),
 ):
     """
     Trigger news collection manually (for use with external cron services).
-    
+
     Requires X-Cron-Secret header matching CRON_SECRET_KEY environment variable.
     This endpoint is protected to prevent unauthorized collection triggers.
     """
     expected_secret = os.getenv("CRON_SECRET_KEY")
-    
-    # Check authentication
+
     if not expected_secret:
         logger.warning("CRON_SECRET_KEY not set - endpoint is disabled for security")
         raise HTTPException(
             status_code=503,
-            detail="Collection endpoint is not configured"
+            detail="Collection endpoint is not configured",
         )
-    
+
     if not x_cron_secret or x_cron_secret != expected_secret:
-        logger.warning(f"Unauthorized collection attempt from IP")
+        ip = _client_ip(request)
+        logger.warning("Unauthorized collection attempt from IP=%s", ip)
         raise HTTPException(
             status_code=401,
-            detail="Invalid or missing X-Cron-Secret header"
+            detail="Invalid or missing X-Cron-Secret header",
         )
     
     try:

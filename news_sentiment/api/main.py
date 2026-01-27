@@ -2,11 +2,12 @@
 FastAPI application main file.
 """
 
+import os
 import logging
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from news_sentiment.config import get_config
 from news_sentiment.api import routes
@@ -14,20 +15,40 @@ from news_sentiment.api import routes
 logger = logging.getLogger(__name__)
 config = get_config()
 
-# Create FastAPI app
+# Disable interactive docs in production to reduce attack surface
+_is_production = os.getenv("ENV") == "production" or os.getenv("RENDER") == "true"
+
 app = FastAPI(
     title="News Sentiment Comparison API",
     description="API for comparing sentiment and uplift scores between conservative and liberal news sources",
-    version="0.1.0"
+    version="0.1.0",
+    docs_url=None if _is_production else "/docs",
+    redoc_url=None if _is_production else "/redoc",
+    openapi_url=None if _is_production else "/openapi.json",
 )
 
-# Configure CORS
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Add security-related HTTP headers to all responses."""
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        return response
+
+
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Configure CORS — restrict methods and headers (no wildcards)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.api.cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Accept", "X-Cron-Secret"],
 )
 
 # Include routers
@@ -50,12 +71,14 @@ async def global_exception_handler(request: Request, exc: Exception):
 @app.get("/")
 async def root():
     """Root endpoint - provides API information."""
-    return {
+    payload = {
         "message": "News Sentiment Comparison API",
         "version": "0.1.0",
-        "docs": "/docs",
-        "api": "/api/v1"
+        "api": "/api/v1",
     }
+    if not _is_production:
+        payload["docs"] = "/docs"
+    return payload
 
 
 @app.on_event("startup")
