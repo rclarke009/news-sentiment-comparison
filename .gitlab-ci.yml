@@ -1,0 +1,136 @@
+# GitLab CI/CD Pipeline for News Sentiment Comparison
+#
+# Stages: lint → test → smoke → security
+#
+# Required CI/CD Variables (set in GitLab: Settings → CI/CD → Variables):
+#   - API_BASE_URL: Base URL for smoke tests and ZAP scans (e.g., https://news-sentiment-api.onrender.com)
+#
+# Optional Variables:
+#   - ZAP_SKIP: Set to "true" to skip the ZAP security job (useful for faster MR pipelines)
+#   - ZAP_API_KEY: ZAP API key if using authenticated ZAP instance
+
+stages:
+  - lint
+  - test
+  - smoke
+  - security
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  PYTHON_VERSION: "3.11"
+
+# Cache pip dependencies
+cache:
+  paths:
+    - .cache/pip/
+
+lint:
+  stage: lint
+  image: python:${PYTHON_VERSION}
+  before_script:
+    - python --version
+    - pip install --upgrade pip
+    - pip install -r requirements-dev.txt
+  script:
+    - echo "Running code formatting check (black)..."
+    - black --check news_sentiment/ scripts/
+    - echo "Running linting (ruff)..."
+    - ruff check news_sentiment/ scripts/
+    - echo "Running type checking (mypy)..."
+    - mypy news_sentiment/ || true  # Continue on mypy errors (non-blocking)
+  allow_failure: false
+
+test:
+  stage: test
+  image: python:${PYTHON_VERSION}
+  before_script:
+    - python --version
+    - pip install --upgrade pip
+    - pip install -r requirements-dev.txt
+  script:
+    - echo "Running pytest..."
+    - pytest scripts/ -v --tb=short
+  allow_failure: false
+
+smoke:
+  stage: smoke
+  image: python:${PYTHON_VERSION}
+  before_script:
+    - python --version
+    - pip install --upgrade pip
+    - pip install -r requirements.txt
+  script:
+    - |
+      if [ -z "$API_BASE_URL" ]; then
+        echo "Warning: API_BASE_URL not set. Using default production URL."
+        python scripts/smoke_test_production.py
+      else
+        echo "Running smoke tests against $API_BASE_URL"
+        python scripts/smoke_test_production.py --base-url "$API_BASE_URL"
+      fi
+  allow_failure: false
+  only:
+    - main
+    - master
+    - merge_requests
+
+zap:
+  stage: security
+  image: python:${PYTHON_VERSION}
+  services:
+    - name: zaproxy/zap-stable:latest
+      alias: zap
+      command: ["zap.sh", "-daemon", "-host", "0.0.0.0", "-port", "8080", "-config", "api.disablekey=true", "-config", "api.addrs.addr.name=.*", "-config", "api.addrs.addr.regex=true"]
+  variables:
+    ZAP_URL: "http://zap:8080"
+  before_script:
+    - python --version
+    - pip install --upgrade pip
+    - pip install -r requirements-dev.txt
+    - echo "Waiting for ZAP to be ready..."
+    - |
+      timeout=60
+      elapsed=0
+      while [ $elapsed -lt $timeout ]; do
+        if curl -s http://zap:8080/JSON/core/view/version/ > /dev/null 2>&1; then
+          echo "ZAP is ready"
+          break
+        fi
+        echo "Waiting for ZAP... ($elapsed/$timeout seconds)"
+        sleep 2
+        elapsed=$((elapsed + 2))
+      done
+      if [ $elapsed -ge $timeout ]; then
+        echo "ZAP did not become ready in time"
+        exit 1
+      fi
+  script:
+    - |
+      if [ "$ZAP_SKIP" = "true" ]; then
+        echo "ZAP_SKIP is set to true. Skipping ZAP security scan."
+        exit 0
+      fi
+      if [ -z "$API_BASE_URL" ]; then
+        echo "Error: API_BASE_URL must be set for ZAP scans."
+        exit 1
+      fi
+      echo "Running ZAP security scan against $API_BASE_URL"
+      python scripts/zap_scan.py \
+        --target "$API_BASE_URL" \
+        --zap-url "$ZAP_URL" \
+        --api-key "${ZAP_API_KEY:-}" \
+        --fail-on high,medium \
+        --report-format JSON \
+        --output-dir zap-reports
+  artifacts:
+    when: always
+    paths:
+      - zap-reports/
+    expire_in: 30 days
+    reports:
+      junit: zap-reports/junit.xml  # If we add JUnit output later
+  allow_failure: true  # Don't block pipeline on security findings (but still report them)
+  only:
+    - main
+    - master
+    - schedules  # Allow scheduled runs

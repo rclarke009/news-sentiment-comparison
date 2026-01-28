@@ -238,6 +238,25 @@ class ZAPScanner:
                     print(f"    Description: {alert.get('description', 'N/A')[:100]}...")
 
         print("=" * 60 + "\n")
+        return summary
+
+    def should_fail_on_risk_levels(self, risk_levels: list[str]) -> bool:
+        """
+        Check if scan should fail based on specified risk levels.
+        
+        Args:
+            risk_levels: List of risk levels to check (e.g., ["High", "Medium"])
+            
+        Returns:
+            True if any of the specified risk levels have findings > 0
+        """
+        alerts = self.get_alerts()
+        summary = self._generate_summary(alerts)
+        
+        for risk_level in risk_levels:
+            if summary.get(risk_level, 0) > 0:
+                return True
+        return False
 
 
 def main():
@@ -280,6 +299,13 @@ def main():
         default="zap-reports",
         help="Output directory for reports (default: zap-reports)"
     )
+    parser.add_argument(
+        "--fail-on",
+        help="Comma-separated list of risk levels that should cause exit code 1 (e.g., 'high,medium'). "
+             "If any of these risk levels have findings > 0, the script will exit with code 1. "
+             "Valid values: High, Medium, Low, Informational. "
+             "Useful for CI/CD pipelines to fail on security findings."
+    )
 
     args = parser.parse_args()
 
@@ -314,10 +340,26 @@ def main():
         report_file = output_dir / f"zap_report_{timestamp}.{args.report_format.lower()}"
         scanner.generate_report(str(report_file), args.report_format)
 
-        # Print summary
-        scanner.print_summary()
+        # Print summary and get summary data
+        summary = scanner.print_summary()
 
         logger.info(f"Scan complete. Report saved to {report_file}")
+
+        # Check if we should fail based on --fail-on argument
+        if args.fail_on:
+            risk_levels = [r.strip().capitalize() for r in args.fail_on.split(",")]
+            # Validate risk levels
+            valid_levels = {"High", "Medium", "Low", "Informational"}
+            invalid_levels = [r for r in risk_levels if r not in valid_levels]
+            if invalid_levels:
+                logger.error(f"Invalid risk levels in --fail-on: {invalid_levels}. Valid values: High, Medium, Low, Informational")
+                sys.exit(1)
+            
+            if scanner.should_fail_on_risk_levels(risk_levels):
+                logger.error(f"Scan found security issues at risk levels: {', '.join(risk_levels)}. Failing as requested.")
+                sys.exit(1)
+            else:
+                logger.info(f"No findings at risk levels: {', '.join(risk_levels)}. Scan passed.")
 
     except KeyboardInterrupt:
         logger.warning("Scan interrupted by user")

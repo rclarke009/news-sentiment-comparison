@@ -101,7 +101,22 @@ python scripts/zap_scan.py --target http://localhost:8000 --zap-url http://local
 
 ### Integration with CI/CD
 
-For automated security testing in CI/CD pipelines:
+The project includes a GitLab CI pipeline (`.gitlab-ci.yml`) that runs ZAP scans automatically. The pipeline:
+
+- Runs ZAP as a service container
+- Scans the API URL specified in `API_BASE_URL` CI variable
+- Uses `--fail-on high,medium` to fail the pipeline if High or Medium risk findings are detected
+- Saves ZAP reports as artifacts (30-day retention)
+- Can be skipped by setting `ZAP_SKIP=true` CI variable
+
+**GitLab CI Setup:**
+1. Set `API_BASE_URL` CI variable to your deployed API URL
+2. Optionally set `ZAP_SKIP=true` to skip ZAP scans in MR pipelines
+3. Pipeline runs automatically on push to main/master and merge requests
+
+**Manual CI/CD Integration:**
+
+For other CI/CD platforms (GitHub Actions, Jenkins, etc.):
 
 ```yaml
 # Example GitHub Actions workflow
@@ -112,7 +127,7 @@ For automated security testing in CI/CD pipelines:
 - name: Run ZAP scan
   run: |
     pip install -r requirements-dev.txt
-    python scripts/zap_scan.py --target http://localhost:8000
+    python scripts/zap_scan.py --target ${{ env.API_BASE_URL }} --fail-on high,medium
 
 - name: Upload ZAP report
   uses: actions/upload-artifact@v3
@@ -120,6 +135,11 @@ For automated security testing in CI/CD pipelines:
     name: zap-report
     path: zap-reports/
 ```
+
+**Key Features:**
+- `--fail-on high,medium` causes the script to exit with code 1 if High or Medium risk findings are detected
+- Reports are saved to `zap-reports/` directory (configurable via `--output-dir`)
+- Use `--report-format HTML` for human-readable reports, or `JSON` for programmatic parsing
 
 ## Dependency hygiene
 

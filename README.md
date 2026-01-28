@@ -256,6 +256,45 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
+### CI/CD Pipeline (GitLab CI)
+
+The project includes a GitLab CI pipeline (`.gitlab-ci.yml`) that automates code quality checks, testing, smoke tests, and security scanning.
+
+**Pipeline Stages:**
+1. **lint** - Code formatting (black), linting (ruff), and type checking (mypy)
+2. **test** - Run pytest test suite
+3. **smoke** - Smoke test against deployed API (health, sources, today, history endpoints)
+4. **security** - OWASP ZAP security scan (optional, can be skipped with `ZAP_SKIP=true`)
+
+**Setup:**
+
+1. **Push code to GitLab** - Connect your repository to GitLab
+2. **Set CI/CD Variables** (Settings → CI/CD → Variables):
+   - `API_BASE_URL` (required for smoke and ZAP jobs): Base URL of your deployed API (e.g., `https://news-sentiment-api.onrender.com`)
+   - `ZAP_SKIP` (optional): Set to `"true"` to skip the ZAP security job
+   - `ZAP_API_KEY` (optional): ZAP API key if using authenticated ZAP instance
+
+3. **Pipeline runs automatically** on:
+   - Push to `main`/`master` branch
+   - Merge requests
+   - Scheduled runs (for ZAP scans)
+
+**Pipeline Features:**
+- **Smoke tests** run against the `API_BASE_URL` variable (or default production URL)
+- **ZAP scans** run against the same URL and save reports as artifacts (30-day retention)
+- **ZAP can fail pipeline** if High/Medium risk findings are detected (configurable via `--fail-on`)
+- All jobs cache pip dependencies for faster runs
+
+**Local Testing:**
+You can test the CI scripts locally:
+```bash
+# Test smoke script with env var (like CI does)
+API_BASE_URL=https://your-api.onrender.com python scripts/smoke_test_production.py
+
+# Test ZAP with fail-on (like CI does)
+python scripts/zap_scan.py --target https://your-api.onrender.com --fail-on high,medium
+```
+
 ### Security Testing (OWASP ZAP)
 
 Run security scans with OWASP ZAP to identify common vulnerabilities:
@@ -269,6 +308,9 @@ python scripts/zap_scan.py --target http://localhost:8000
 
 # Run scan against production
 python scripts/zap_scan.py --target https://sentiment-lens.onrender.com
+
+# Fail on High/Medium findings (useful for CI/CD)
+python scripts/zap_scan.py --target http://localhost:8000 --fail-on high,medium
 ```
 
 See [SECURITY.md](SECURITY.md#security-testing-with-owasp-zap) for detailed instructions.

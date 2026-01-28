@@ -27,6 +27,7 @@ When to use:
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from typing import Any, Callable
 
@@ -73,13 +74,16 @@ def check(
 
 
 def main() -> int:
+    # Support env var override for CI/CD (e.g., GitLab CI variable API_BASE_URL)
+    default_base_url = os.getenv("API_BASE_URL", os.getenv("SMOKE_BASE_URL", DEFAULT_BASE_URL))
+    
     parser = argparse.ArgumentParser(
         description="Smoke-test production News Sentiment API (health, sources, today, history)."
     )
     parser.add_argument(
         "--base-url",
-        default=DEFAULT_BASE_URL,
-        help=f"API origin, no path (default: {DEFAULT_BASE_URL})",
+        default=default_base_url,
+        help=f"API origin, no path (default: {default_base_url}, or API_BASE_URL/SMOKE_BASE_URL env var)",
     )
     parser.add_argument(
         "-v",
