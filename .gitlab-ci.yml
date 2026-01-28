@@ -1,6 +1,6 @@
 # GitLab CI/CD Pipeline for News Sentiment Comparison
 #
-# Stages: lint → test → smoke → security
+# Stages: lint → test → smoke → security → secret-detection
 #
 # Required CI/CD Variables (set in GitLab: Settings → CI/CD → Variables):
 #   - API_BASE_URL: Base URL for smoke tests and ZAP scans (e.g., https://news-sentiment-api.onrender.com)
@@ -8,16 +8,19 @@
 # Optional Variables:
 #   - ZAP_SKIP: Set to "true" to skip the ZAP security job (useful for faster MR pipelines)
 #   - ZAP_API_KEY: ZAP API key if using authenticated ZAP instance
+#   - SECRET_DETECTION_ENABLED: Set to "true" to enable GitLab Secret Detection (default: enabled)
 
 stages:
   - lint
   - test
   - smoke
   - security
+  - secret-detection
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   PYTHON_VERSION: "3.11"
+  SECRET_DETECTION_ENABLED: "true"
 
 # Cache pip dependencies
 cache:
@@ -134,3 +137,8 @@ zap:
     - main
     - master
     - schedules  # Allow scheduled runs
+
+# GitLab Secret Detection - scans for exposed secrets/API keys
+# See: https://docs.gitlab.com/user/application_security/secret_detection/pipeline/configure
+include:
+  - template: Security/Secret-Detection.gitlab-ci.yml
