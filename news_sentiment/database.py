@@ -15,6 +15,10 @@ from pymongo.errors import ConnectionFailure, OperationFailure
 from news_sentiment.config import get_config
 from news_sentiment.models import Headline, DailyComparison, SideStatistics, MostUpliftingStory
 from pydantic.networks import HttpUrl
+try:
+    from pydantic_core import Url as PydanticUrl
+except ImportError:
+    PydanticUrl = None
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +36,30 @@ def _agent_log(payload: dict) -> None:
 
 def _convert_httpurl_to_str(obj):
     """Recursively convert HttpUrl objects to strings for MongoDB."""
-    if isinstance(obj, HttpUrl):
+    # HttpUrl is a type alias and can't be used with isinstance() in Python 3.11+
+    # At runtime, HttpUrl values are typically strings or pydantic_core.Url objects
+    # Check for the actual runtime type instead
+    if isinstance(obj, str):
+        # Already a string, return as-is
+        return obj
+    elif obj is None:
+        return obj
+    elif isinstance(obj, (int, float, bool)):
+        # Basic types that shouldn't be converted
+        return obj
+    elif PydanticUrl is not None and isinstance(obj, PydanticUrl):
+        # Check for actual pydantic_core.Url type
         return str(obj)
-    elif isinstance(obj, dict):
+    elif hasattr(obj, '__str__'):
+        # Check if it's a URL-like object by checking if string representation looks like a URL
+        try:
+            str_repr = str(obj)
+            # If it looks like a URL, convert it to string
+            if str_repr.startswith(('http://', 'https://')):
+                return str_repr
+        except Exception:
+            pass
+    if isinstance(obj, dict):
         return {k: _convert_httpurl_to_str(v) for k, v in obj.items()}
     elif isinstance(obj, list):
         return [_convert_httpurl_to_str(item) for item in obj]
