@@ -2,8 +2,10 @@
 Main collection orchestration module.
 """
 
+import json
 import logging
 from datetime import datetime, date
+from pathlib import Path
 from typing import Optional
 from collections import Counter
 
@@ -19,6 +21,16 @@ from news_sentiment.database import NewsDatabase
 from news_sentiment.local_sentiment import LocalSentimentScorer
 
 logger = logging.getLogger(__name__)
+
+# #region agent log
+_DEBUG_LOG_PATH = Path(__file__).resolve().parents[2] / ".cursor" / "debug.log"
+def _agent_log(payload: dict) -> None:
+    try:
+        with open(_DEBUG_LOG_PATH, "a") as f:
+            f.write(json.dumps(payload) + "\n")
+    except Exception:
+        pass
+# #endregion
 
 
 class NewsCollector:
@@ -48,6 +60,10 @@ class NewsCollector:
         Returns:
             DailyComparison object with aggregated results
         """
+        # #region agent log
+        import time
+        _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H2", "location": "collector.py:collect_daily_news", "message": "collect_daily_news_entry", "data": {"target_date": target_date.isoformat() if target_date else None}, "timestamp": int(time.time() * 1000)})
+        # #endregion
         if target_date is None:
             # Use UTC date consistently (Render servers use UTC)
             target_date = datetime.utcnow().date()
@@ -58,16 +74,31 @@ class NewsCollector:
         try:
             # Step 1: Fetch headlines
             logger.info("Fetching headlines from news sources...")
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H2_H5", "location": "collector.py:collect_daily_news", "message": "before_fetch_headlines", "data": {"date": date_str}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             conservative_headlines, liberal_headlines = self.fetcher.fetch_all_headlines()
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H2_H5", "location": "collector.py:collect_daily_news", "message": "after_fetch_headlines", "data": {"conservative_count": len(conservative_headlines), "liberal_count": len(liberal_headlines), "date": date_str}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             
             if not conservative_headlines and not liberal_headlines:
+                # #region agent log
+                _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H5", "location": "collector.py:collect_daily_news", "message": "no_headlines_fetched", "data": {"date": date_str}, "timestamp": int(time.time() * 1000)})
+                # #endregion
                 logger.warning("No headlines fetched from any source")
                 raise ValueError("No headlines available")
             
             # Step 2: Score headlines
             logger.info("Scoring headlines for sentiment...")
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H5", "location": "collector.py:collect_daily_news", "message": "before_scoring", "data": {"date": date_str}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             conservative_scored = self.scorer.score_headlines(conservative_headlines)
             liberal_scored = self.scorer.score_headlines(liberal_headlines)
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H5", "location": "collector.py:collect_daily_news", "message": "after_scoring", "data": {"conservative_scored": len(conservative_scored), "liberal_scored": len(liberal_scored), "date": date_str}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             
             # Step 3: Calculate statistics
             logger.info("Calculating statistics...")
@@ -76,8 +107,14 @@ class NewsCollector:
             
             # Step 4: Save to database
             logger.info("Saving to database...")
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H2_H3", "location": "collector.py:collect_daily_news", "message": "before_save_headlines", "data": {"date": date_str}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             self.database.save_headlines(conservative_scored, date_str)
             self.database.save_headlines(liberal_scored, date_str)
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H2_H3", "location": "collector.py:collect_daily_news", "message": "after_save_headlines", "data": {"date": date_str}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             
             # Step 5: Create daily comparison
             comparison = DailyComparison(
@@ -86,7 +123,13 @@ class NewsCollector:
                 liberal=liberal_stats.model_dump()
             )
             
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H2_H3", "location": "collector.py:collect_daily_news", "message": "before_save_daily_comparison", "data": {"date": date_str}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             self.database.save_daily_comparison(comparison)
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H2_H3", "location": "collector.py:collect_daily_news", "message": "after_save_daily_comparison", "data": {"date": date_str}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             
             logger.info(
                 f"Collection complete: "
@@ -94,9 +137,15 @@ class NewsCollector:
                 f"Liberal avg={liberal_stats.avg_uplift:.2f}"
             )
             
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H2", "location": "collector.py:collect_daily_news", "message": "collect_daily_news_success", "data": {"date": date_str, "conservative_avg": conservative_stats.avg_uplift, "liberal_avg": liberal_stats.avg_uplift}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             return comparison
         
         except Exception as e:
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H2", "location": "collector.py:collect_daily_news", "message": "collect_daily_news_exception", "data": {"error": str(e), "date": date_str}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             logger.error(f"Error during daily collection for {date_str}: {e}", exc_info=True)
             raise
     

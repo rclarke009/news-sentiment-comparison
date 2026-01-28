@@ -2,8 +2,10 @@
 MongoDB database operations for news sentiment data.
 """
 
+import json
 import logging
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import List, Optional
 from pymongo import MongoClient
 from pymongo.collection import Collection
@@ -15,6 +17,16 @@ from news_sentiment.models import Headline, DailyComparison, SideStatistics, Mos
 from pydantic.networks import HttpUrl
 
 logger = logging.getLogger(__name__)
+
+# #region agent log
+_DEBUG_LOG_PATH = Path(__file__).resolve().parents[3] / ".cursor" / "debug.log"
+def _agent_log(payload: dict) -> None:
+    try:
+        with open(_DEBUG_LOG_PATH, "a") as f:
+            f.write(json.dumps(payload) + "\n")
+    except Exception:
+        pass
+# #endregion
 
 
 
@@ -41,16 +53,29 @@ class NewsDatabase:
     
     def _connect(self) -> None:
         """Connect to MongoDB."""
+        # #region agent log
+        import time
+        _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H1_H8", "location": "database.py:_connect", "message": "connecting_to_mongodb", "data": {"uri_masked": self.config.mongodb.uri[:20] + "..." if len(self.config.mongodb.uri) > 20 else self.config.mongodb.uri, "database_name": self.config.mongodb.database_name, "timeout": self.config.mongodb.connection_timeout}, "timestamp": int(time.time() * 1000)})
+        # #endregion
         try:
             self.client = MongoClient(
                 self.config.mongodb.uri,
                 serverSelectionTimeoutMS=self.config.mongodb.connection_timeout * 1000
             )
             # Test connection
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H1_H8", "location": "database.py:_connect", "message": "pinging_mongodb", "data": {}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             self.client.admin.command("ping")
             self.db = self.client[self.config.mongodb.database_name]
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H1_H8", "location": "database.py:_connect", "message": "mongodb_connected", "data": {"database_name": self.config.mongodb.database_name}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             logger.info(f"Connected to MongoDB: {self.config.mongodb.database_name}")
         except ConnectionFailure as e:
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H1_H8", "location": "database.py:_connect", "message": "mongodb_connection_failed", "data": {"error": str(e), "database_name": self.config.mongodb.database_name}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             logger.error(f"Failed to connect to MongoDB (database: {self.config.mongodb.database_name}): {e}", exc_info=True)
             raise
     
@@ -88,7 +113,14 @@ class NewsDatabase:
         Returns:
             Number of headlines saved
         """
+        # #region agent log
+        import time
+        _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H2_H3_H4", "location": "database.py:save_headlines", "message": "save_headlines_entry", "data": {"headlines_count": len(headlines), "date": date}, "timestamp": int(time.time() * 1000)})
+        # #endregion
         if not headlines:
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H2_H5", "location": "database.py:save_headlines", "message": "no_headlines_to_save", "data": {"date": date}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             return 0
         
         try:
@@ -118,11 +150,20 @@ class NewsDatabase:
                 )
             
             # Insert documents
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H3", "location": "database.py:save_headlines", "message": "before_insert_many", "data": {"documents_count": len(documents), "date": date}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             result = collection.insert_many(documents)
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H3", "location": "database.py:save_headlines", "message": "after_insert_many", "data": {"inserted_count": len(result.inserted_ids), "date": date}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             logger.info(f"Saved {len(result.inserted_ids)} headlines to database")
             return len(result.inserted_ids)
         
         except Exception as e:
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H3", "location": "database.py:save_headlines", "message": "save_headlines_exception", "data": {"error": str(e), "headlines_count": len(headlines), "date": date}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             logger.error(f"Error saving {len(headlines)} headlines to database for date {date}: {e}", exc_info=True)
             raise
     
@@ -136,6 +177,10 @@ class NewsDatabase:
         Returns:
             True if successful
         """
+        # #region agent log
+        import time
+        _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H2_H3_H4", "location": "database.py:save_daily_comparison", "message": "save_daily_comparison_entry", "data": {"date": comparison.date}, "timestamp": int(time.time() * 1000)})
+        # #endregion
         try:
             collection = self.db.daily_comparisons
             
@@ -150,16 +195,24 @@ class NewsDatabase:
             doc = _convert_httpurl_to_str(doc)
             
             # Upsert (insert or update)
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H3", "location": "database.py:save_daily_comparison", "message": "before_upsert", "data": {"date": comparison.date}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             result = collection.update_one(
                 {"date": comparison.date},
                 {"$set": doc},
                 upsert=True
             )
-            
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H3", "location": "database.py:save_daily_comparison", "message": "after_upsert", "data": {"date": comparison.date, "matched": result.matched_count, "modified": result.modified_count, "upserted_id": str(result.upserted_id) if result.upserted_id else None}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             logger.info(f"Saved daily comparison for {comparison.date}")
             return True
         
         except Exception as e:
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H3", "location": "database.py:save_daily_comparison", "message": "save_daily_comparison_exception", "data": {"error": str(e), "date": comparison.date}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             logger.error(f"Error saving daily comparison for date {comparison.date}: {e}", exc_info=True)
             raise
     
@@ -173,9 +226,16 @@ class NewsDatabase:
         Returns:
             DailyComparison or None if not found
         """
+        # #region agent log
+        import time
+        _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H4_H7_H8", "location": "database.py:get_daily_comparison", "message": "get_daily_comparison_entry", "data": {"date": date}, "timestamp": int(time.time() * 1000)})
+        # #endregion
         try:
             collection = self.db.daily_comparisons
             doc = collection.find_one({"date": date})
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H4_H7_H8", "location": "database.py:get_daily_comparison", "message": "get_daily_comparison_result", "data": {"date": date, "found": doc is not None}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             
             if doc:
                 # Convert ISO strings back to datetime

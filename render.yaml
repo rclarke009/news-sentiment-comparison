@@ -23,7 +23,7 @@ services:
       - key: MONGODB_URI
         sync: false
       - key: CORS_ORIGINS
-        value: https://news-sentiment-frontend.onrender.com
+        value: https://news-sentiment-frontend.onrender.com,https://sentimentlens.netlify.app
 
   # React frontend (static site)
   - type: web

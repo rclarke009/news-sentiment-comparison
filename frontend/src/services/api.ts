@@ -94,8 +94,21 @@ export const apiService = {
    * Get today's comparison
    */
   getToday: async (): Promise<DailyComparison> => {
-    const response = await api.get<DailyComparison>('/today');
-    return response.data;
+    // #region agent log
+    fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.ts:getToday',message:'api_getToday_entry',data:{baseURL:API_BASE_URL,url:'/today'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H6_H10'})}).catch(()=>{});
+    // #endregion
+    try {
+      const response = await api.get<DailyComparison>('/today');
+      // #region agent log
+      fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.ts:getToday',message:'api_getToday_success',data:{status:response.status,date:response.data.date},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
+      // #endregion
+      return response.data;
+    } catch (err: any) {
+      // #region agent log
+      fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.ts:getToday',message:'api_getToday_error',data:{status:err?.response?.status,message:err?.message,code:err?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H6_H7_H9'})}).catch(()=>{});
+      // #endregion
+      throw err;
+    }
   },
 
   /**

@@ -123,23 +123,54 @@ async def health_check_db(request: Request):
 @router.get("/today", response_model=DailyComparisonResponse, tags=["comparisons"])
 async def get_today(request: Request):
     """Get today's comparison."""
+    # #region agent log
+    import time
+    import json
+    from pathlib import Path
+    _DEBUG_LOG_PATH = Path(__file__).resolve().parents[3] / ".cursor" / "debug.log"
+    def _agent_log(payload: dict) -> None:
+        try:
+            with open(_DEBUG_LOG_PATH, "a") as f:
+                f.write(json.dumps(payload) + "\n")
+        except Exception:
+            pass
+    _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H6_H7_H8", "location": "routes.py:get_today", "message": "get_today_entry", "data": {}, "timestamp": int(time.time() * 1000)})
+    # #endregion
     try:
+        # #region agent log
+        _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H8", "location": "routes.py:get_today", "message": "before_get_db", "data": {}, "timestamp": int(time.time() * 1000)})
+        # #endregion
         db = get_db()
         # Use UTC date consistently (Render servers use UTC)
         today = datetime.utcnow().date().isoformat()
+        # #region agent log
+        _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H4", "location": "routes.py:get_today", "message": "querying_date", "data": {"today": today}, "timestamp": int(time.time() * 1000)})
+        # #endregion
         comparison = db.get_daily_comparison(today)
+        # #region agent log
+        _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H7_H8", "location": "routes.py:get_today", "message": "after_get_daily_comparison", "data": {"found": comparison is not None, "today": today}, "timestamp": int(time.time() * 1000)})
+        # #endregion
 
         if not comparison:
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H7", "location": "routes.py:get_today", "message": "no_comparison_found", "data": {"today": today}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             logger.info("No comparison for today (%s)", today)
             raise HTTPException(
                 status_code=404,
                 detail=f"No comparison found for today ({today})"
             )
 
+        # #region agent log
+        _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H7", "location": "routes.py:get_today", "message": "returning_comparison", "data": {"date": comparison.date}, "timestamp": int(time.time() * 1000)})
+        # #endregion
         return _convert_comparison_to_response(comparison)
     except HTTPException:
         raise
     except Exception as e:
+        # #region agent log
+        _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H7_H8", "location": "routes.py:get_today", "message": "get_today_exception", "data": {"error": str(e)}, "timestamp": int(time.time() * 1000)})
+        # #endregion
         context = _get_request_context(request)
         logger.error(f"Error fetching today's comparison - {context}: {e}", exc_info=True)
         raise HTTPException(

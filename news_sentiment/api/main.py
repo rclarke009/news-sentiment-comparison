@@ -2,9 +2,13 @@
 FastAPI application main file.
 """
 
+import json
 import os
 import logging
+import time
 from datetime import datetime
+from pathlib import Path
+
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -15,6 +19,16 @@ from news_sentiment.api import routes
 
 logger = logging.getLogger(__name__)
 config = get_config()
+
+# #region agent log
+_DEBUG_LOG_PATH = Path(__file__).resolve().parents[3] / ".cursor" / "debug.log"
+def _agent_log(payload: dict) -> None:
+    try:
+        with open(_DEBUG_LOG_PATH, "a") as f:
+            f.write(json.dumps(payload) + "\n")
+    except Exception:
+        pass
+# #endregion
 
 # Allow enabling docs in production via ENABLE_DOCS environment variable
 # Docs are disabled by default in production to reduce attack surface
@@ -54,6 +68,27 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type", "Accept", "X-Cron-Secret"],
 )
+
+
+# #region agent log
+class CORSDebugMiddleware(BaseHTTPMiddleware):
+    """Log Origin vs allowlist and response status for /api/v1 to debug CORS."""
+
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        if not path.startswith("/api/v1"):
+            return await call_next(request)
+        origin = request.headers.get("Origin") or "(none)"
+        allowlist = config.api.cors_origins
+        in_allowlist = origin in allowlist if origin != "(none)" else "n/a"
+        _agent_log({"sessionId": "debug-session", "hypothesisId": "H1", "location": "main.py:CORSDebug", "message": "request", "data": {"path": path, "origin": origin, "in_allowlist": in_allowlist, "allowlist": allowlist}, "timestamp": int(time.time() * 1000)})
+        response = await call_next(request)
+        _agent_log({"sessionId": "debug-session", "hypothesisId": "H3", "location": "main.py:CORSDebug", "message": "response", "data": {"path": path, "status": response.status_code, "origin": origin}, "timestamp": int(time.time() * 1000)})
+        return response
+
+
+app.add_middleware(CORSDebugMiddleware)
+# #endregion
 
 # Include routers
 app.include_router(routes.router, prefix="/api/v1")
@@ -113,6 +148,9 @@ async def root():
 async def startup_event():
     """Initialize on startup."""
     logger.info("News Sentiment Comparison API starting up...")
+    # #region agent log
+    _agent_log({"sessionId": "debug-session", "hypothesisId": "H2", "location": "main.py:startup", "message": "CORS config at startup", "data": {"cors_origins": config.api.cors_origins, "count": len(config.api.cors_origins)}, "timestamp": int(time.time() * 1000)})
+    # #endregion
 
 
 @app.on_event("shutdown")
