@@ -397,6 +397,10 @@ class NewsDatabase:
         Returns:
             List of Headline objects with both scores
         """
+        # #region agent log
+        import time
+        _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H7", "location": "database.py:get_headlines_for_comparison", "message": "get_headlines_for_comparison_entry", "data": {"days": days, "political_side": political_side}, "timestamp": int(time.time() * 1000)})
+        # #endregion
         try:
             collection = self.db.headlines
             cutoff_date = (datetime.utcnow() - timedelta(days=days)).date().isoformat()
@@ -410,7 +414,15 @@ class NewsDatabase:
             if political_side:
                 query["political_side"] = political_side
             
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H7", "location": "database.py:get_headlines_for_comparison", "message": "before_query", "data": {"query": query, "cutoff_date": cutoff_date}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             docs = collection.find(query).sort("date", -1)
+            # #region agent log
+            doc_list = list(docs)
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H7", "location": "database.py:get_headlines_for_comparison", "message": "after_query", "data": {"docs_count": len(doc_list)}, "timestamp": int(time.time() * 1000)})
+            docs = iter(doc_list)
+            # #endregion
             
             headlines = []
             for doc in docs:

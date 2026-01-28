@@ -470,6 +470,19 @@ async def get_model_comparison(
     
     Returns correlation stats, agreement rate, and divergence examples.
     """
+    # #region agent log
+    import time
+    import json
+    from pathlib import Path
+    _DEBUG_LOG_PATH = Path(__file__).resolve().parents[3] / ".cursor" / "debug.log"
+    def _agent_log(payload: dict) -> None:
+        try:
+            with open(_DEBUG_LOG_PATH, "a") as f:
+                f.write(json.dumps(payload) + "\n")
+        except Exception:
+            pass
+    _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H7", "location": "routes.py:get_model_comparison", "message": "get_model_comparison_entry", "data": {"days": days, "source": source}, "timestamp": int(time.time() * 1000)})
+    # #endregion
     if source and source not in ["conservative", "liberal"]:
         raise HTTPException(status_code=400, detail="source must be 'conservative' or 'liberal'")
     
@@ -478,9 +491,18 @@ async def get_model_comparison(
         from collections import defaultdict
         
         db = get_db()
+        # #region agent log
+        _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H7", "location": "routes.py:get_model_comparison", "message": "before_get_headlines_for_comparison", "data": {"days": days, "source": source}, "timestamp": int(time.time() * 1000)})
+        # #endregion
         headlines = db.get_headlines_for_comparison(days=days, political_side=source)
+        # #region agent log
+        _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H7", "location": "routes.py:get_model_comparison", "message": "after_get_headlines_for_comparison", "data": {"headlines_count": len(headlines), "days": days, "source": source}, "timestamp": int(time.time() * 1000)})
+        # #endregion
         
         if not headlines:
+            # #region agent log
+            _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H7", "location": "routes.py:get_model_comparison", "message": "no_headlines_with_both_scores", "data": {"days": days, "source": source}, "timestamp": int(time.time() * 1000)})
+            # #endregion
             raise HTTPException(
                 status_code=404,
                 detail=f"No headlines with both scores found for the last {days} days"
