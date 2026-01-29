@@ -4,7 +4,7 @@ API request/response schemas.
 
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel
 
 
 class MostUpliftingResponse(BaseModel):

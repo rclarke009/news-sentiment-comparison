@@ -366,11 +366,40 @@ npx playwright install   # first time only: installs browsers
 PLAYWRIGHT_BASE_URL=https://sentimentlens.netlify.app npm run test:e2e
 ```
 
-### Code Formatting
+### Run full lint (match CI)
+
+Before pushing, run the same checks as the GitLab lint job:
 
 ```bash
-black news_sentiment/
+./scripts/lint.sh
 ```
+
+Or run the commands directly:
+
+```bash
+black --check news_sentiment/ scripts/
+ruff check news_sentiment/ scripts/
+```
+
+### Code Formatting
+
+Format code (same paths as CI):
+
+```bash
+black news_sentiment/ scripts/
+```
+
+Check only (no write): `black --check news_sentiment/ scripts/`
+
+### Linting (Ruff)
+
+Run the same lint check as CI before pushing:
+
+```bash
+ruff check news_sentiment/ scripts/
+```
+
+Auto-fix what Ruff can fix: `ruff check news_sentiment/ scripts/ --fix`
 
 ### Type Checking
 

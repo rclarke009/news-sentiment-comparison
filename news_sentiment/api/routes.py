@@ -4,10 +4,9 @@ API route handlers.
 
 import os
 import logging
-from datetime import date, datetime
+from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, Header, Request
-from fastapi.responses import JSONResponse
 import requests
 
 from news_sentiment.config import get_config
@@ -634,7 +633,6 @@ async def get_model_comparison(
 
     try:
         import statistics
-        from collections import defaultdict
 
         db = get_db()
         # #region agent log

@@ -106,7 +106,7 @@ def test_newsmax_support():
         if data.get("status") == "ok":
             articles = data.get("articles", [])
             total_results = data.get("totalResults", 0)
-            print(f"✓ API returned status 'ok'")
+            print("✓ API returned status 'ok'")
             print(f"  Total results: {total_results}")
             print(f"  Articles returned: {len(articles)}")
 
@@ -140,7 +140,7 @@ def test_newsmax_support():
             try:
                 error_data = e.response.json()
                 print(f"  Error message: {error_data.get('message', 'Unknown error')}")
-            except:
+            except Exception:
                 print(f"  Response: {e.response.text[:200]}")
 
     # Test 3: Compare with invalid source ID to see error message
@@ -157,11 +157,11 @@ def test_newsmax_support():
             if data.get("status") != "ok":
                 error_msg = data.get("message", "Unknown error")
                 print(f"✗ Invalid source returns error: {error_msg}")
-                print(f"\n  → Comparing with 'newsmax' result:")
-                print(f"     - Invalid source: Returns error message")
-                print(f"     - 'newsmax': Returns status 'ok' with 0 articles")
+                print("\n  → Comparing with 'newsmax' result:")
+                print("     - Invalid source: Returns error message")
+                print("     - 'newsmax': Returns status 'ok' with 0 articles")
                 print(
-                    f"     - Conclusion: 'newsmax' is accepted as valid but has no content"
+                    "     - Conclusion: 'newsmax' is accepted as valid but has no content"
                 )
             else:
                 print("⚠️  Invalid source also returned 'ok' (unexpected)")
@@ -185,7 +185,7 @@ def test_newsmax_support():
                     print(f"✓ Found working source ID: '{alt_id}'")
                     found_alternative = True
                     newsmax_returns_articles = True
-        except:
+        except Exception:
             pass
 
     if not found_alternative:

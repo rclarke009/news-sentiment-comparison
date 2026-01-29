@@ -100,7 +100,7 @@ class NewsFetcher:
                     except (ValueError, TypeError):
                         pass
 
-                error_msg = f"NewsAPI rate limit exceeded (429). "
+                error_msg = "NewsAPI rate limit exceeded (429). "
                 if retry_after_seconds:
                     error_msg += f"Retry after {retry_after_seconds} seconds. "
                 else:
@@ -213,7 +213,7 @@ class NewsFetcher:
             url = article.get("url", "")
 
             if not title or not url:
-                logger.warning(f"Skipping article with missing title or URL")
+                logger.warning("Skipping article with missing title or URL")
                 return None
 
             return Headline(

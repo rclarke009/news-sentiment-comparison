@@ -69,7 +69,7 @@ class ZAPScanner:
                 last_error = str(e)
                 logger.debug(f"ZAP not ready yet: {e}")
                 time.sleep(2)
-        logger.error(f"ZAP did not become ready in time")
+        logger.error("ZAP did not become ready in time")
         logger.error(f"Last error: {last_error}")
         logger.error(f"Tried connecting to: {self.zap_url}")
         logger.error("\nTroubleshooting:")
@@ -102,7 +102,7 @@ class ZAPScanner:
         # Set up context (optional, but helps ZAP understand the app)
         context_name = "news-sentiment-api"
         try:
-            context_id = self.zap.context.new_context(context_name)
+            self.zap.context.new_context(context_name)
             self.zap.context.include_in_context(context_name, f"{target_url}.*")
         except Exception as e:
             logger.warning(f"Could not create context: {e}")
@@ -228,7 +228,7 @@ class ZAPScanner:
         print("ZAP Security Scan Summary")
         print("=" * 60)
         print(f"Target: {self.target_url}")
-        print(f"\nAlerts by Risk Level:")
+        print("\nAlerts by Risk Level:")
         print(f"  High:           {summary['High']}")
         print(f"  Medium:         {summary['Medium']}")
         print(f"  Low:            {summary['Low']}")
@@ -350,8 +350,8 @@ def main():
         )
         scanner.generate_report(str(report_file), args.report_format)
 
-        # Print summary and get summary data
-        summary = scanner.print_summary()
+        # Print summary
+        scanner.print_summary()
 
         logger.info(f"Scan complete. Report saved to {report_file}")
 

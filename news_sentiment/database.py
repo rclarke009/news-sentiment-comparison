@@ -8,18 +8,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional
 from pymongo import MongoClient
-from pymongo.collection import Collection
 from pymongo.database import Database
-from pymongo.errors import ConnectionFailure, OperationFailure
+from pymongo.errors import ConnectionFailure
 
 from news_sentiment.config import get_config
 from news_sentiment.models import (
     Headline,
     DailyComparison,
-    SideStatistics,
-    MostUpliftingStory,
 )
-from pydantic.networks import HttpUrl
 
 try:
     from pydantic_core import Url as PydanticUrl

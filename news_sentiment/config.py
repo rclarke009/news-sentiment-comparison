@@ -3,7 +3,6 @@ Configuration management for the news sentiment comparison tool.
 """
 
 import os
-from pathlib import Path
 from typing import Optional
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv

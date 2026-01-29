@@ -5,7 +5,7 @@ CLI script to run the news collector manually.
 
 import sys
 import argparse
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 
 # Add parent directory to path for imports
@@ -13,7 +13,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from news_sentiment.utils.logging_config import setup_logging
 from news_sentiment.collector import NewsCollector
-from news_sentiment.config import get_config
 
 import logging
 
@@ -75,7 +74,7 @@ def main():
         print("COLLECTION SUMMARY")
         print("=" * 60)
         print(f"Date: {comparison.date}")
-        print(f"\nConservative:")
+        print("\nConservative:")
         print(f"  Average Uplift: {comparison.conservative['avg_uplift']:.2f}")
         print(f"  Positive %: {comparison.conservative['positive_percentage']:.1f}%")
         print(f"  Total Headlines: {comparison.conservative['total_headlines']}")
@@ -83,7 +82,7 @@ def main():
             print(
                 f"  Most Uplifting: {comparison.conservative['most_uplifting']['title'][:60]}..."
             )
-        print(f"\nLiberal:")
+        print("\nLiberal:")
         print(f"  Average Uplift: {comparison.liberal['avg_uplift']:.2f}")
         print(f"  Positive %: {comparison.liberal['positive_percentage']:.1f}%")
         print(f"  Total Headlines: {comparison.liberal['total_headlines']}")
