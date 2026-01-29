@@ -1,0 +1,27 @@
+# CI dependencies: same as requirements.txt but WITHOUT torch/transformers.
+# Used by lint, test, zap jobs to avoid "No space left on device" on runners.
+# Local ML models (transformers, torch) are only needed for local collector runs.
+
+# Core dependencies (pinned for security/reproducibility)
+requests==2.31.0
+python-dotenv==1.0.0
+pydantic==2.5.0
+pymongo[srv]==4.6.0
+
+# LLM API clients
+groq==0.4.0
+openai==1.6.0
+
+# Web framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+
+# Scheduling
+apscheduler==3.10.4
+
+# Date handling
+python-dateutil==2.8.2
+
+# Utilities
+httpx==0.26.0
+feedparser==6.0.10

@@ -18,14 +18,10 @@ stages:
   - secret-detection
 
 variables:
-  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   PYTHON_VERSION: "3.11"
   SECRET_DETECTION_ENABLED: "true"
 
-# Cache pip dependencies
-cache:
-  paths:
-    - .cache/pip/
+# No pip cache: use --no-cache-dir to reduce disk use and avoid "No space left on device".
 
 lint:
   stage: lint
@@ -33,7 +29,7 @@ lint:
   before_script:
     - python --version
     - pip install --upgrade pip
-    - pip install -r requirements-dev.txt
+    - pip install --no-cache-dir -r requirements-dev-ci.txt
   script:
     - echo "Running code formatting check (black)..."
     - black --check news_sentiment/ scripts/
@@ -49,7 +45,7 @@ test:
   before_script:
     - python --version
     - pip install --upgrade pip
-    - pip install -r requirements-dev.txt
+    - pip install --no-cache-dir -r requirements-dev-ci.txt
   script:
     - echo "Running pytest..."
     - pytest scripts/ -v --tb=short
@@ -61,7 +57,7 @@ smoke:
   before_script:
     - python --version
     - pip install --upgrade pip
-    - pip install -r requirements.txt
+    - pip install --no-cache-dir -r requirements-smoke.txt
   script:
     - |
       if [ -z "$API_BASE_URL" ]; then
@@ -89,7 +85,7 @@ zap:
   before_script:
     - python --version
     - pip install --upgrade pip
-    - pip install -r requirements-dev.txt
+    - pip install --no-cache-dir -r requirements-dev-ci.txt
     - echo "Waiting for ZAP to be ready..."
     - |
       timeout=60

@@ -1,0 +1,4 @@
+# Minimal deps for smoke_test_production.py (hits API only).
+# Avoids installing full app stack (including torch/transformers) in CI.
+
+requests==2.31.0
