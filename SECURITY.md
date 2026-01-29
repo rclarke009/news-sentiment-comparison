@@ -101,18 +101,20 @@ python scripts/zap_scan.py --target http://localhost:8000 --zap-url http://local
 
 ### Integration with CI/CD
 
-The project includes a GitLab CI pipeline (`.gitlab-ci.yml`) that runs ZAP scans automatically. The pipeline:
+The project includes a GitLab CI pipeline (`.gitlab-ci.yml`) that runs ZAP scans per environment (dev, staging, production). The pipeline:
 
 - Runs ZAP as a service container
-- Scans the API URL specified in `API_BASE_URL` CI variable
-- Uses `--fail-on high,medium` to fail the pipeline if High or Medium risk findings are detected
+- Scans the API URL per branch: `DEV_API_BASE_URL` (develop), `STAGING_API_BASE_URL` (staging), `PROD_API_BASE_URL` or `API_BASE_URL` (main/master)
+- Uses `--fail-on high,medium` to fail the job if High or Medium risk findings are detected
 - Saves ZAP reports as artifacts (30-day retention)
-- Can be skipped by setting `ZAP_SKIP=true` CI variable
+- Production ZAP runs only after manual approval (risk management)
+
+**How CI interacts with production:** CI does not deploy; it validates. On push to `main`/`master`, the pipeline runs lint, test, smoke against the production API URL, and (after manual approval) ZAP against production. Production is the live API (e.g. Render) that `PROD_API_BASE_URL`/`API_BASE_URL` points to. Render deploys from the connected Git repo; CI gives confidence before and after that deploy.
 
 **GitLab CI Setup:**
-1. Set `API_BASE_URL` CI variable to your deployed API URL
-2. Optionally set `ZAP_SKIP=true` to skip ZAP scans in MR pipelines
-3. Pipeline runs automatically on push to main/master and merge requests
+1. Set `DEV_API_BASE_URL`, `STAGING_API_BASE_URL`, and `PROD_API_BASE_URL` (or `API_BASE_URL`) in CI/CD Variables. If dev/staging services do not exist yet, set them to the production URL so pipelines run.
+2. Optionally set `ZAP_SKIP=true` to skip ZAP jobs (e.g. on MRs).
+3. Pipeline runs per branch (see README branch behavior table).
 
 **Manual CI/CD Integration:**
 

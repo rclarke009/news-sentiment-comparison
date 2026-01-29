@@ -44,6 +44,31 @@ A production-ready automation platform that orchestrates data collection, API in
        └─────────────┘
 ```
 
+## CI/CD Pipeline (GitLab CI)
+
+[![Pipeline](https://gitlab.com/rclarke009-group/news-sentiment-comparison/badges/main/pipeline.svg)](https://gitlab.com/rclarke009-group/news-sentiment-comparison/-/pipelines)
+
+This project uses a production-grade CI/CD pipeline with automated linting, testing, smoke validation against deployed services, and optional security scanning via OWASP ZAP. Smoke tests and ZAP scans are designed to catch configuration, deployment, and security regressions that unit tests cannot detect.
+
+**Pipeline stages:**
+- **Lint**: black, ruff, mypy
+- **Test**: pytest unit and integration tests
+- **Smoke**: validates live API endpoints (dev, staging, production) post-deploy
+- **Security**: OWASP ZAP dynamic scan (configurable fail levels); Secret Detection for committed secrets
+
+**How CI interacts with production:** CI does not deploy; it validates. On push to `main`/`master`, the pipeline runs lint, test, smoke against the production API URL, and security (ZAP + Secret Detection). Production is the live API (e.g. Render) that `PROD_API_BASE_URL`/`API_BASE_URL` points to. Render deploys from the connected Git repo; CI gives confidence before and after that deploy.
+
+**Branch behavior:**
+
+| Branch | Stages that run |
+|--------|------------------|
+| Feature / MR | lint, test |
+| develop | lint, test, smoke:dev, zap:dev (optional) |
+| staging | lint, test, smoke:staging, zap:staging |
+| main / master | lint, test, smoke:prod, zap:prod (manual approval for prod ZAP) |
+
+See [Development](#development) for CI/CD setup (variables, local testing).
+
 ## Prerequisites
 
 - Python 3.9+
@@ -258,32 +283,21 @@ pytest
 
 ### CI/CD Pipeline (GitLab CI)
 
-The project includes a GitLab CI pipeline (`.gitlab-ci.yml`) that automates code quality checks, testing, smoke tests, and security scanning.
+See above for a summary of stages and how CI interacts with production.
 
-**Pipeline Stages:**
-1. **lint** - Code formatting (black), linting (ruff), and type checking (mypy)
-2. **test** - Run pytest test suite
-3. **smoke** - Smoke test against deployed API (health, sources, today, history endpoints)
-4. **security** - OWASP ZAP security scan (optional, can be skipped with `ZAP_SKIP=true`)
+The project includes a GitLab CI pipeline (`.gitlab-ci.yml`) that automates code quality checks, testing, smoke tests, and security scanning per environment (dev, staging, production).
 
 **Setup:**
 
 1. **Push code to GitLab** - Connect your repository to GitLab
 2. **Set CI/CD Variables** (Settings → CI/CD → Variables):
-   - `API_BASE_URL` (required for smoke and ZAP jobs): Base URL of your deployed API (e.g., `https://news-sentiment-api.onrender.com`)
-   - `ZAP_SKIP` (optional): Set to `"true"` to skip the ZAP security job
+   - `DEV_API_BASE_URL`: Dev API URL (e.g., `https://news-sentiment-api-dev.onrender.com`); used on `develop`
+   - `STAGING_API_BASE_URL`: Staging API URL; used on `staging`
+   - `PROD_API_BASE_URL` or `API_BASE_URL`: Production API URL (e.g., `https://news-sentiment-api.onrender.com`); used on `main`/`master`
+   - `ZAP_SKIP` (optional): Set to `"true"` to skip ZAP jobs (e.g. on MRs)
    - `ZAP_API_KEY` (optional): ZAP API key if using authenticated ZAP instance
 
-3. **Pipeline runs automatically** on:
-   - Push to `main`/`master` branch
-   - Merge requests
-   - Scheduled runs (for ZAP scans)
-
-**Pipeline Features:**
-- **Smoke tests** run against the `API_BASE_URL` variable (or default production URL)
-- **ZAP scans** run against the same URL and save reports as artifacts (30-day retention)
-- **ZAP can fail pipeline** if High/Medium risk findings are detected (configurable via `--fail-on`)
-- All jobs cache pip dependencies for faster runs
+3. **Pipeline runs** per branch (see branch behavior table above). Production ZAP can require manual approval (risk management).
 
 **Local Testing:**
 You can test the CI scripts locally:
