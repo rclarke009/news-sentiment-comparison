@@ -42,6 +42,10 @@ lint:
 test:
   stage: test
   image: python:${PYTHON_VERSION}
+  variables:
+    # Placeholder keys so get_config() loads; tests skip or don't call real APIs
+    NEWS_API_KEY: "ci-placeholder"
+    GROQ_API_KEY: "ci-placeholder"
   before_script:
     - python --version
     - pip install --upgrade pip

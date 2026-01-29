@@ -13,12 +13,18 @@ sys.path.insert(0, str(Path(__file__).parent.parent))  # how does parent.parent 
 # which is the root directory.
 # so the parent.parent is the root directory.
 
+import os
+
+import pytest
 import requests
+
 from news_sentiment.config import get_config
 
 
 def test_newsmax_support():
     """Test if NewsAPI supports Newsmax."""
+    if os.environ.get("NEWS_API_KEY") == "ci-placeholder":
+        pytest.skip("Skipping NewsAPI test when using CI placeholder key")
     config = get_config()
     api_key = config.news_api.api_key
 
