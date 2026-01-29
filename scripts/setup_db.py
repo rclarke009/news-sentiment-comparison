@@ -22,20 +22,20 @@ def main():
     """Setup database and create indexes."""
     setup_logging()
     config = get_config()
-    
+
     logger.info("Setting up MongoDB database...")
     logger.info(f"Connection URI: {config.mongodb.uri}")
     logger.info(f"Database: {config.mongodb.database_name}")
-    
+
     try:
         db = NewsDatabase()
         logger.info("✓ Database connection successful")
         logger.info("✓ Indexes created")
         logger.info("\nDatabase setup complete!")
-        
+
         db.close()
         return 0
-    
+
     except Exception as e:
         logger.error(f"✗ Database setup failed: {e}")
         return 1

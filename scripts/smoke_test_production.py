@@ -75,8 +75,10 @@ def check(
 
 def main() -> int:
     # Support env var override for CI/CD (e.g., GitLab CI variable API_BASE_URL)
-    default_base_url = os.getenv("API_BASE_URL", os.getenv("SMOKE_BASE_URL", DEFAULT_BASE_URL))
-    
+    default_base_url = os.getenv(
+        "API_BASE_URL", os.getenv("SMOKE_BASE_URL", DEFAULT_BASE_URL)
+    )
+
     parser = argparse.ArgumentParser(
         description="Smoke-test production News Sentiment API (health, sources, today, history)."
     )
@@ -103,7 +105,8 @@ def main() -> int:
             base,
             "health",
             expect_status=200,
-            validate=lambda d: isinstance(d.get("status"), str) and "healthy" in str(d.get("status")).lower(),
+            validate=lambda d: isinstance(d.get("status"), str)
+            and "healthy" in str(d.get("status")).lower(),
             name="health",
             verbose=verbose,
         )

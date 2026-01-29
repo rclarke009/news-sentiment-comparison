@@ -19,17 +19,17 @@ logger = logging.getLogger(__name__)
 
 class NewsFetcher:
     """Fetches news headlines from NewsAPI.org and RSS feeds."""
-    
+
     def __init__(self):
         """Initialize the news fetcher with configuration."""
         self.config = get_config()
         self.session = self._create_session()
         self.rss_fetcher = RSSFetcher()
-    
+
     def _create_session(self) -> requests.Session:
         """Create a requests session with retry logic."""
         session = requests.Session()
-        
+
         # Retry strategy - DO NOT retry on 429 errors (rate limits)
         # 429 errors are handled explicitly in fetch_headlines to avoid wasting API quota
         # Only retry on transient server errors (500, 502, 503, 504)
@@ -38,57 +38,59 @@ class NewsFetcher:
             total=self.config.news_api.max_retries,
             backoff_factor=2,
             backoff_jitter=0.1,  # 10% randomization to prevent synchronized retries
-            status_forcelist=[500, 502, 503, 504],  # Removed 429 - we handle it explicitly
-            allowed_methods=["GET"]
+            status_forcelist=[
+                500,
+                502,
+                503,
+                504,
+            ],  # Removed 429 - we handle it explicitly
+            allowed_methods=["GET"],
         )
-        
+
         adapter = HTTPAdapter(max_retries=retry_strategy)
         session.mount("https://", adapter)
         session.mount("http://", adapter)
-        
+
         return session
-    
+
     def fetch_headlines(
-        self,
-        sources: List[str],
-        political_side: str,
-        page_size: int = 20
+        self, sources: List[str], political_side: str, page_size: int = 20
     ) -> List[Headline]:
         """
         Fetch top headlines from specified sources.
-        
+
         Args:
             sources: List of NewsAPI source IDs
             political_side: 'conservative' or 'liberal'
             page_size: Number of headlines to fetch per source
-            
+
         Returns:
             List of Headline objects
         """
         all_headlines = []
-        
+
         # NewsAPI allows multiple sources in one request (comma-separated)
         sources_str = ",".join(sources)
-        
+
         try:
             url = f"{self.config.news_api.base_url}/top-headlines"
             params = {
                 "sources": sources_str,
                 "pageSize": page_size,
-                "apiKey": self.config.news_api.api_key
+                "apiKey": self.config.news_api.api_key,
             }
-            
-            logger.info(f"Fetching headlines from {len(sources)} {political_side} sources")
-            
-            response = self.session.get(
-                url,
-                params=params,
-                timeout=self.config.news_api.timeout
+
+            logger.info(
+                f"Fetching headlines from {len(sources)} {political_side} sources"
             )
-            
+
+            response = self.session.get(
+                url, params=params, timeout=self.config.news_api.timeout
+            )
+
             status_code = response.status_code
             retry_after = response.headers.get("Retry-After", None)
-            
+
             # Handle 429 rate limit errors before raise_for_status
             if status_code == 429:
                 retry_after_seconds = None
@@ -97,33 +99,32 @@ class NewsFetcher:
                         retry_after_seconds = int(retry_after)
                     except (ValueError, TypeError):
                         pass
-                
+
                 error_msg = f"NewsAPI rate limit exceeded (429). "
                 if retry_after_seconds:
                     error_msg += f"Retry after {retry_after_seconds} seconds. "
                 else:
                     error_msg += "This may be due to the daily limit (100 requests/day on free tier). "
                 error_msg += f"Political side: {political_side}"
-                
+
                 logger.error(error_msg)
-                
+
                 # Raise a more informative exception
-                raise requests.exceptions.HTTPError(
-                    f"{error_msg}",
-                    response=response
-                )
-            
+                raise requests.exceptions.HTTPError(f"{error_msg}", response=response)
+
             response.raise_for_status()
-            
+
             data = response.json()
-            
+
             if data.get("status") != "ok":
-                logger.error(f"NewsAPI returned error for {political_side} sources: {data.get('message', 'Unknown error')}")
+                logger.error(
+                    f"NewsAPI returned error for {political_side} sources: {data.get('message', 'Unknown error')}"
+                )
                 return []
-            
+
             articles = data.get("articles", [])
             logger.info(f"Received {len(articles)} articles from NewsAPI")
-            
+
             for article in articles:
                 try:
                     headline = self._parse_article(article, political_side)
@@ -132,26 +133,31 @@ class NewsFetcher:
                 except Exception as e:
                     logger.warning(f"Failed to parse article: {e}")
                     continue
-            
+
             # Rate limiting: NewsAPI free tier allows 100 requests/day
             # Be respectful and add a small delay
             time.sleep(0.5)
-            
+
         except requests.exceptions.RequestException as e:
-            logger.error(f"Error fetching headlines for {political_side} sources: {e}", exc_info=True)
+            logger.error(
+                f"Error fetching headlines for {political_side} sources: {e}",
+                exc_info=True,
+            )
             raise
-        
-        logger.info(f"Successfully fetched {len(all_headlines)} headlines for {political_side} side")
+
+        logger.info(
+            f"Successfully fetched {len(all_headlines)} headlines for {political_side} side"
+        )
         return all_headlines
-    
+
     def _parse_article(self, article: dict, political_side: str) -> Optional[Headline]:
         """
         Parse a NewsAPI article into a Headline model.
-        
+
         Args:
             article: Article dictionary from NewsAPI
             political_side: 'conservative' or 'liberal'
-            
+
         Returns:
             Headline object or None if parsing fails
         """
@@ -168,7 +174,9 @@ class NewsFetcher:
                     dot_idx = published_str.rfind(".")
                     # Look for timezone separator after the dot
                     tz_sep_plus = published_str.find("+", dot_idx)
-                    tz_sep_minus = published_str.find("-", dot_idx + 7)  # Skip date part
+                    tz_sep_minus = published_str.find(
+                        "-", dot_idx + 7
+                    )  # Skip date part
                     tz_sep = -1
                     if tz_sep_plus > dot_idx:
                         tz_sep = tz_sep_plus
@@ -176,32 +184,38 @@ class NewsFetcher:
                         tz_sep = tz_sep_minus
                     if tz_sep > dot_idx:
                         # Extract microseconds part
-                        microsec = published_str[dot_idx+1:tz_sep]
+                        microsec = published_str[dot_idx + 1 : tz_sep]
                         if len(microsec) > 6:
                             # Truncate to 6 digits
-                            published_str = published_str[:dot_idx+1] + microsec[:6] + published_str[tz_sep:]
+                            published_str = (
+                                published_str[: dot_idx + 1]
+                                + microsec[:6]
+                                + published_str[tz_sep:]
+                            )
                 try:
                     published_at = datetime.fromisoformat(published_str)
                 except ValueError:
                     # Fallback to current time if parsing fails
-                    logger.warning(f"Failed to parse date: {published_str}, using current time")
+                    logger.warning(
+                        f"Failed to parse date: {published_str}, using current time"
+                    )
                     published_at = datetime.utcnow()
             else:
                 published_at = datetime.utcnow()
-            
+
             # Get source information
             source_info = article.get("source", {})
             source_name = source_info.get("name", "Unknown")
             source_id = source_info.get("id", source_name.lower().replace(" ", "-"))
-            
+
             # Validate required fields
             title = article.get("title", "").strip()
             url = article.get("url", "")
-            
+
             if not title or not url:
                 logger.warning(f"Skipping article with missing title or URL")
                 return None
-            
+
             return Headline(
                 title=title,
                 description=article.get("description", "").strip() or None,
@@ -209,18 +223,18 @@ class NewsFetcher:
                 source=source_name,
                 source_id=source_id,
                 published_at=published_at,
-                political_side=political_side
+                political_side=political_side,
             )
-        
+
         except Exception as e:
             logger.error(f"Error parsing article: {e}")
             return None
-    
+
     def fetch_all_headlines(self) -> tuple[List[Headline], List[Headline]]:
         """
         Fetch headlines from both conservative and liberal sources.
         Combines NewsAPI and RSS feed sources.
-        
+
         Returns:
             Tuple of (conservative_headlines, liberal_headlines)
         """
@@ -231,13 +245,11 @@ class NewsFetcher:
         conservative_headlines = self.fetch_headlines(
             sources=config.sources.conservative,
             political_side="conservative",
-            page_size=cap
+            page_size=cap,
         )
 
         liberal_headlines = self.fetch_headlines(
-            sources=config.sources.liberal,
-            political_side="liberal",
-            page_size=cap
+            sources=config.sources.liberal, political_side="liberal", page_size=cap
         )
 
         # Fetch from RSS feeds
@@ -247,11 +259,12 @@ class NewsFetcher:
                 for rss in config.sources.conservative_rss
             ]
             rss_headlines = self.rss_fetcher.fetch_rss_sources(
-                rss_sources=rss_sources,
-                political_side="conservative"
+                rss_sources=rss_sources, political_side="conservative"
             )
             conservative_headlines.extend(rss_headlines)
-            logger.info(f"Added {len(rss_headlines)} headlines from RSS feeds to conservative sources")
+            logger.info(
+                f"Added {len(rss_headlines)} headlines from RSS feeds to conservative sources"
+            )
 
         if config.sources.liberal_rss:
             rss_sources = [
@@ -259,18 +272,23 @@ class NewsFetcher:
                 for rss in config.sources.liberal_rss
             ]
             rss_headlines = self.rss_fetcher.fetch_rss_sources(
-                rss_sources=rss_sources,
-                political_side="liberal"
+                rss_sources=rss_sources, political_side="liberal"
             )
             liberal_headlines.extend(rss_headlines)
-            logger.info(f"Added {len(rss_headlines)} headlines from RSS feeds to liberal sources")
+            logger.info(
+                f"Added {len(rss_headlines)} headlines from RSS feeds to liberal sources"
+            )
 
         # Cap each side at headlines_per_side for even comparison
         if len(conservative_headlines) > cap:
-            logger.info(f"Capping conservative headlines from {len(conservative_headlines)} to {cap}")
+            logger.info(
+                f"Capping conservative headlines from {len(conservative_headlines)} to {cap}"
+            )
             conservative_headlines = conservative_headlines[:cap]
         if len(liberal_headlines) > cap:
-            logger.info(f"Capping liberal headlines from {len(liberal_headlines)} to {cap}")
+            logger.info(
+                f"Capping liberal headlines from {len(liberal_headlines)} to {cap}"
+            )
             liberal_headlines = liberal_headlines[:cap]
 
         return conservative_headlines, liberal_headlines

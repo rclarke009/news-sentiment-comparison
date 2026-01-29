@@ -30,8 +30,7 @@ except ImportError:
     sys.exit(1)
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -39,7 +38,9 @@ logger = logging.getLogger(__name__)
 class ZAPScanner:
     """OWASP ZAP scanner wrapper for API security testing."""
 
-    def __init__(self, zap_url: str = "http://localhost:8080", api_key: Optional[str] = None):
+    def __init__(
+        self, zap_url: str = "http://localhost:8080", api_key: Optional[str] = None
+    ):
         """
         Initialize ZAP scanner.
 
@@ -49,7 +50,9 @@ class ZAPScanner:
         """
         self.zap_url = zap_url
         self.api_key = api_key or os.getenv("ZAP_API_KEY")
-        self.zap = ZAPv2(proxies={"http": zap_url, "https": zap_url}, apikey=self.api_key)
+        self.zap = ZAPv2(
+            proxies={"http": zap_url, "https": zap_url}, apikey=self.api_key
+        )
         self.target_url: Optional[str] = None
 
     def wait_for_zap(self, timeout: int = 30) -> bool:
@@ -71,9 +74,15 @@ class ZAPScanner:
         logger.error(f"Tried connecting to: {self.zap_url}")
         logger.error("\nTroubleshooting:")
         logger.error("1. If using ZAP GUI: Enable API in Tools → Options → API")
-        logger.error("2. If using Docker: docker run -d -p 8080:8080 zaproxy/zap-stable zap.sh -daemon")
-        logger.error("3. Check if ZAP is running: Check the ZAP GUI or 'docker ps' for Docker")
-        logger.error("4. Try a different port: --zap-url http://localhost:8090 (if ZAP is on port 8090)")
+        logger.error(
+            "2. If using Docker: docker run -d -p 8080:8080 zaproxy/zap-stable zap.sh -daemon"
+        )
+        logger.error(
+            "3. Check if ZAP is running: Check the ZAP GUI or 'docker ps' for Docker"
+        )
+        logger.error(
+            "4. Try a different port: --zap-url http://localhost:8090 (if ZAP is on port 8090)"
+        )
         return False
 
     def spider_scan(self, target_url: str, max_children: int = 10) -> str:
@@ -100,9 +109,7 @@ class ZAPScanner:
 
         # Start spider scan
         scan_id = self.zap.spider.scan(
-            url=target_url,
-            maxchildren=max_children,
-            recurse=True
+            url=target_url, maxchildren=max_children, recurse=True
         )
 
         # Wait for spider to complete
@@ -175,7 +182,7 @@ class ZAPScanner:
                 "target": self.target_url,
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
                 "alerts": alerts,
-                "summary": self._generate_summary(alerts)
+                "summary": self._generate_summary(alerts),
             }
             with open(output_file, "w") as f:
                 json.dump(report_data, f, indent=2)
@@ -204,7 +211,7 @@ class ZAPScanner:
             "Medium": 0,
             "Low": 0,
             "Informational": 0,
-            "Total": len(alerts)
+            "Total": len(alerts),
         }
         for alert in alerts:
             risk = alert.get("risk", "Informational")
@@ -228,14 +235,16 @@ class ZAPScanner:
         print(f"  Informational:  {summary['Informational']}")
         print(f"  Total:          {summary['Total']}")
 
-        if summary['High'] > 0 or summary['Medium'] > 0:
+        if summary["High"] > 0 or summary["Medium"] > 0:
             print("\n⚠️  High/Medium risk alerts found:")
             for alert in alerts:
                 risk = alert.get("risk", "Informational")
                 if risk in ["High", "Medium"]:
                     print(f"\n  [{risk}] {alert.get('name', 'Unknown')}")
                     print(f"    URL: {alert.get('url', 'N/A')}")
-                    print(f"    Description: {alert.get('description', 'N/A')[:100]}...")
+                    print(
+                        f"    Description: {alert.get('description', 'N/A')[:100]}..."
+                    )
 
         print("=" * 60 + "\n")
         return summary
@@ -243,16 +252,16 @@ class ZAPScanner:
     def should_fail_on_risk_levels(self, risk_levels: list[str]) -> bool:
         """
         Check if scan should fail based on specified risk levels.
-        
+
         Args:
             risk_levels: List of risk levels to check (e.g., ["High", "Medium"])
-            
+
         Returns:
             True if any of the specified risk levels have findings > 0
         """
         alerts = self.get_alerts()
         summary = self._generate_summary(alerts)
-        
+
         for risk_level in risk_levels:
             if summary.get(risk_level, 0) > 0:
                 return True
@@ -267,44 +276,41 @@ def main():
     parser.add_argument(
         "--target",
         required=True,
-        help="Target API URL (e.g., http://localhost:8000 or https://api.onrender.com)"
+        help="Target API URL (e.g., http://localhost:8000 or https://api.onrender.com)",
     )
     parser.add_argument(
         "--zap-url",
         default="http://localhost:8080",
-        help="ZAP API URL (default: http://localhost:8080)"
+        help="ZAP API URL (default: http://localhost:8080)",
     )
-    parser.add_argument(
-        "--api-key",
-        help="ZAP API key (or set ZAP_API_KEY env var)"
-    )
+    parser.add_argument("--api-key", help="ZAP API key (or set ZAP_API_KEY env var)")
     parser.add_argument(
         "--skip-spider",
         action="store_true",
-        help="Skip spider scan (only run active scan)"
+        help="Skip spider scan (only run active scan)",
     )
     parser.add_argument(
         "--skip-active",
         action="store_true",
-        help="Skip active scan (only run spider scan)"
+        help="Skip active scan (only run spider scan)",
     )
     parser.add_argument(
         "--report-format",
         choices=["JSON", "HTML", "XML", "MD"],
         default="JSON",
-        help="Report format (default: JSON)"
+        help="Report format (default: JSON)",
     )
     parser.add_argument(
         "--output-dir",
         default="zap-reports",
-        help="Output directory for reports (default: zap-reports)"
+        help="Output directory for reports (default: zap-reports)",
     )
     parser.add_argument(
         "--fail-on",
         help="Comma-separated list of risk levels that should cause exit code 1 (e.g., 'high,medium'). "
-             "If any of these risk levels have findings > 0, the script will exit with code 1. "
-             "Valid values: High, Medium, Low, Informational. "
-             "Useful for CI/CD pipelines to fail on security findings."
+        "If any of these risk levels have findings > 0, the script will exit with code 1. "
+        "Valid values: High, Medium, Low, Informational. "
+        "Useful for CI/CD pipelines to fail on security findings.",
     )
 
     args = parser.parse_args()
@@ -319,7 +325,9 @@ def main():
     # Wait for ZAP to be ready
     if not scanner.wait_for_zap():
         logger.error("ZAP is not available. Make sure ZAP is running.")
-        logger.info("Start ZAP with: docker run -d -p 8080:8080 zaproxy/zap-stable zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.disablekey=true -config 'api.addrs.addr.name=.*' -config 'api.addrs.addr.regex=true'")
+        logger.info(
+            "Start ZAP with: docker run -d -p 8080:8080 zaproxy/zap-stable zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.disablekey=true -config 'api.addrs.addr.name=.*' -config 'api.addrs.addr.regex=true'"
+        )
         sys.exit(1)
 
     try:
@@ -337,7 +345,9 @@ def main():
 
         # Generate and save report
         timestamp = time.strftime("%Y%m%d_%H%M%S")
-        report_file = output_dir / f"zap_report_{timestamp}.{args.report_format.lower()}"
+        report_file = (
+            output_dir / f"zap_report_{timestamp}.{args.report_format.lower()}"
+        )
         scanner.generate_report(str(report_file), args.report_format)
 
         # Print summary and get summary data
@@ -352,14 +362,20 @@ def main():
             valid_levels = {"High", "Medium", "Low", "Informational"}
             invalid_levels = [r for r in risk_levels if r not in valid_levels]
             if invalid_levels:
-                logger.error(f"Invalid risk levels in --fail-on: {invalid_levels}. Valid values: High, Medium, Low, Informational")
+                logger.error(
+                    f"Invalid risk levels in --fail-on: {invalid_levels}. Valid values: High, Medium, Low, Informational"
+                )
                 sys.exit(1)
-            
+
             if scanner.should_fail_on_risk_levels(risk_levels):
-                logger.error(f"Scan found security issues at risk levels: {', '.join(risk_levels)}. Failing as requested.")
+                logger.error(
+                    f"Scan found security issues at risk levels: {', '.join(risk_levels)}. Failing as requested."
+                )
                 sys.exit(1)
             else:
-                logger.info(f"No findings at risk levels: {', '.join(risk_levels)}. Scan passed.")
+                logger.info(
+                    f"No findings at risk levels: {', '.join(risk_levels)}. Scan passed."
+                )
 
     except KeyboardInterrupt:
         logger.warning("Scan interrupted by user")

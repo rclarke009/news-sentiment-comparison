@@ -22,12 +22,16 @@ config = get_config()
 
 # #region agent log
 _DEBUG_LOG_PATH = Path(__file__).resolve().parents[3] / ".cursor" / "debug.log"
+
+
 def _agent_log(payload: dict) -> None:
     try:
         with open(_DEBUG_LOG_PATH, "a") as f:
             f.write(json.dumps(payload) + "\n")
     except Exception:
         pass
+
+
 # #endregion
 
 # Allow enabling docs in production via ENABLE_DOCS environment variable
@@ -81,9 +85,36 @@ class CORSDebugMiddleware(BaseHTTPMiddleware):
         origin = request.headers.get("Origin") or "(none)"
         allowlist = config.api.cors_origins
         in_allowlist = origin in allowlist if origin != "(none)" else "n/a"
-        _agent_log({"sessionId": "debug-session", "hypothesisId": "H1", "location": "main.py:CORSDebug", "message": "request", "data": {"path": path, "origin": origin, "in_allowlist": in_allowlist, "allowlist": allowlist}, "timestamp": int(time.time() * 1000)})
+        _agent_log(
+            {
+                "sessionId": "debug-session",
+                "hypothesisId": "H1",
+                "location": "main.py:CORSDebug",
+                "message": "request",
+                "data": {
+                    "path": path,
+                    "origin": origin,
+                    "in_allowlist": in_allowlist,
+                    "allowlist": allowlist,
+                },
+                "timestamp": int(time.time() * 1000),
+            }
+        )
         response = await call_next(request)
-        _agent_log({"sessionId": "debug-session", "hypothesisId": "H3", "location": "main.py:CORSDebug", "message": "response", "data": {"path": path, "status": response.status_code, "origin": origin}, "timestamp": int(time.time() * 1000)})
+        _agent_log(
+            {
+                "sessionId": "debug-session",
+                "hypothesisId": "H3",
+                "location": "main.py:CORSDebug",
+                "message": "response",
+                "data": {
+                    "path": path,
+                    "status": response.status_code,
+                    "origin": origin,
+                },
+                "timestamp": int(time.time() * 1000),
+            }
+        )
         return response
 
 
@@ -110,24 +141,24 @@ def _get_request_context(request: Request) -> str:
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Global exception handler to ensure all errors return proper JSON responses.
-    
+
     The CORS middleware will automatically add CORS headers to this response.
     """
     context = _get_request_context(request)
     logger.error(f"Unhandled exception - {context}: {exc}", exc_info=True)
-    
+
     # Don't expose internal error details in production
     error_detail = "Internal server error"
     if not _is_production:
         error_detail = f"Internal server error: {str(exc)}"
-    
+
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "detail": error_detail,
             "error_code": "INTERNAL_SERVER_ERROR",
-            "timestamp": datetime.utcnow().isoformat()
-        }
+            "timestamp": datetime.utcnow().isoformat(),
+        },
     )
 
 
@@ -149,7 +180,19 @@ async def startup_event():
     """Initialize on startup."""
     logger.info("News Sentiment Comparison API starting up...")
     # #region agent log
-    _agent_log({"sessionId": "debug-session", "hypothesisId": "H2", "location": "main.py:startup", "message": "CORS config at startup", "data": {"cors_origins": config.api.cors_origins, "count": len(config.api.cors_origins)}, "timestamp": int(time.time() * 1000)})
+    _agent_log(
+        {
+            "sessionId": "debug-session",
+            "hypothesisId": "H2",
+            "location": "main.py:startup",
+            "message": "CORS config at startup",
+            "data": {
+                "cors_origins": config.api.cors_origins,
+                "count": len(config.api.cors_origins),
+            },
+            "timestamp": int(time.time() * 1000),
+        }
+    )
     # #endregion
 
 
@@ -161,9 +204,10 @@ async def shutdown_event():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "news_sentiment.api.main:app",
         host=config.api.host,
         port=config.api.port,
-        reload=True
+        reload=True,
     )

@@ -9,6 +9,7 @@ from pydantic import BaseModel, HttpUrl
 
 class MostUpliftingResponse(BaseModel):
     """Response schema for most uplifting story."""
+
     title: str
     description: Optional[str]
     url: str
@@ -16,15 +17,14 @@ class MostUpliftingResponse(BaseModel):
     uplift_score: float
     final_score: float
     published_at: str
-    
+
     class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 class SideStatsResponse(BaseModel):
     """Response schema for side statistics."""
+
     avg_uplift: float
     positive_percentage: float
     total_headlines: int
@@ -36,6 +36,7 @@ class SideStatsResponse(BaseModel):
 
 class DailyComparisonResponse(BaseModel):
     """Response schema for daily comparison."""
+
     date: str
     conservative: SideStatsResponse
     liberal: SideStatsResponse
@@ -45,12 +46,14 @@ class DailyComparisonResponse(BaseModel):
 
 class HistoryResponse(BaseModel):
     """Response schema for historical data."""
+
     comparisons: list[DailyComparisonResponse]
     days: int
 
 
 class StatsResponse(BaseModel):
     """Response schema for aggregate statistics."""
+
     total_days: int
     conservative_avg: float
     liberal_avg: float
@@ -60,12 +63,14 @@ class StatsResponse(BaseModel):
 
 class SourcesResponse(BaseModel):
     """Response schema for configured news sources (display names only)."""
+
     conservative: list[str]
     liberal: list[str]
 
 
 class ModelComparisonResponse(BaseModel):
     """Response schema for model comparison statistics."""
+
     total_headlines: int
     agreement_rate: float  # Percentage where both models agree on positive/negative
     avg_score_difference: float  # Average absolute difference between scores
