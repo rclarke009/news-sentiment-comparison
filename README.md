@@ -754,7 +754,7 @@ For production, use MongoDB Atlas (cloud database):
 1. **Sign up:** https://www.mongodb.com/cloud/atlas
 2. **Create free cluster** (M0 tier is free)
 3. **Get connection string:**
-   - Click "Connect" → "Connect your application"
+   - Click "Connect" → "Connect your application."
    - Copy the connection string
    - Replace `<password>` with your database user password
 4. **Update `MONGODB_URI`** in your backend environment variables
