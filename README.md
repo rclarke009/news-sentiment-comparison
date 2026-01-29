@@ -641,7 +641,7 @@ If you're experiencing issues in production (e.g., all scores are 0, "No uplifti
 
 NewsAPI free tier allows 100 requests/day. The collector respects rate limits with delays between requests.
 
-## Deployment
+## Deployment a
 
 ### Frontend Deployment (Netlify)
 
