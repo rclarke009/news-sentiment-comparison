@@ -153,6 +153,10 @@ class Config(BaseModel):
     puff_pieces: PuffPieceConfig
     log_level: str = "INFO"
     collection_schedule: str = "0 10 * * *"  # Daily at 6 AM
+    use_local_sentiment: bool = Field(
+        default=True,
+        description="If true, load local DistilBERT for comparison; set false to save memory (e.g. Render cron).",
+    )
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -206,6 +210,10 @@ class Config(BaseModel):
         )
         cors_origins = [origin.strip() for origin in cors_origins_str.split(",")]
 
+        # USE_LOCAL_SENTIMENT: default True for backward compatibility; set false on memory-limited envs (e.g. Render cron)
+        use_local_raw = os.getenv("USE_LOCAL_SENTIMENT", "true").strip().lower()
+        use_local_sentiment = use_local_raw not in ("false", "0", "no")
+
         return cls(
             news_api=NewsAPIConfig(api_key=news_api_key),
             llm=LLMConfig(
@@ -225,6 +233,7 @@ class Config(BaseModel):
             puff_pieces=PuffPieceConfig(),  # Use defaults
             log_level=os.getenv("LOG_LEVEL", "INFO"),
             collection_schedule=os.getenv("COLLECTION_SCHEDULE", "0 10 * * *"),
+            use_local_sentiment=use_local_sentiment,
         )
 
 

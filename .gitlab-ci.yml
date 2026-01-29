@@ -55,6 +55,7 @@ test:
     - pytest scripts/ -v --tb=short
   allow_failure: false
 
+# Smoke tests hit production API; can fail when Render service is sleeping (free tier) or not deployed
 smoke:
   stage: smoke
   image: python:${PYTHON_VERSION}
@@ -71,7 +72,7 @@ smoke:
         echo "Running smoke tests against $API_BASE_URL"
         python scripts/smoke_test_production.py --base-url "$API_BASE_URL"
       fi
-  allow_failure: false
+  allow_failure: true
   only:
     - main
     - master

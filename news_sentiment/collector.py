@@ -17,6 +17,7 @@ from news_sentiment.models import (
 )
 from news_sentiment.news_fetcher import NewsFetcher
 from news_sentiment.sentiment_scorer import SentimentScorer
+from news_sentiment.config import get_config
 from news_sentiment.database import NewsDatabase
 from news_sentiment.local_sentiment import LocalSentimentScorer
 
@@ -44,15 +45,18 @@ class NewsCollector:
         """Initialize the collector with all required components."""
         self.fetcher = NewsFetcher()
         self.database = NewsDatabase()
-        # Initialize local sentiment scorer
-        try:
-            self.local_scorer = LocalSentimentScorer()
-            logger.info("Local sentiment scorer initialized")
-        except Exception as e:
-            logger.warning(
-                f"Failed to initialize local sentiment scorer: {e}. Continuing without local model."
-            )
-            self.local_scorer = None
+        # Initialize local sentiment scorer only when enabled (saves memory e.g. on Render cron)
+        self.local_scorer = None
+        if get_config().use_local_sentiment:
+            try:
+                self.local_scorer = LocalSentimentScorer()
+                logger.info("Local sentiment scorer initialized")
+            except Exception as e:
+                logger.warning(
+                    f"Failed to initialize local sentiment scorer: {e}. Continuing without local model."
+                )
+        else:
+            logger.info("Local sentiment disabled (USE_LOCAL_SENTIMENT=false)")
         # Pass database and local scorer to sentiment scorer
         self.scorer = SentimentScorer(
             database=self.database, local_scorer=self.local_scorer
