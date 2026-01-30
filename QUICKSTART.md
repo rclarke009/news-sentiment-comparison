@@ -390,12 +390,14 @@ You should see a JSON response with collection results.
    |---------|-------|
    | **Base directory** | `frontend` |
    | **Build command** | `npm run build` |
-   | **Publish directory** | `frontend/dist` |
+   | **Publish directory** | `dist` |
+
+   **Note:** Use Base directory `frontend` (not `news-sentiment-comparison/frontend`) when the repo is the project itself. Use **`v1`** (digit 1) in the API URL, not **`vi`**. Do not use `pip` for the frontend build.
 
 4. **Set environment variable:**
    - In Netlify: **Site settings → Environment variables**
    - Add: `VITE_API_URL` = `https://your-api-host.com/api/v1`
-   - Use your deployed backend API URL (from Render/Railway/etc.)
+   - Use your deployed backend API URL (from Render/Railway/etc.). Use **v1** (digit one), not **vi**.
    - **Redeploy** after adding the variable
 
 ### Backend on Cloud Host
@@ -424,9 +426,8 @@ When creating a new Web Service on Render:
 - **Environment:** Python 3
 - **Build Command:** `pip install -r requirements.txt` (or leave blank if auto-detected)
 - **Start Command:** `uvicorn news_sentiment.api.main:app --host 0.0.0.0 --port $PORT`
-  - ⚠️ **Critical:** The start command is required. Render sets the `$PORT` environment variable automatically.
-  - `--host 0.0.0.0` allows external connections
-  - The app path is `news_sentiment.api.main:app`
+  - ⚠️ **Critical:** The Web Service must use this uvicorn command. Do **not** use `python scripts/run_collector.py` for the Web Service—that is for the Cron Job only (collector runs once and exits).
+  - Render sets `$PORT`; `--host 0.0.0.0` allows external connections.
 
 **Root Directory:**
 - **Not needed** if deploying from the `news-sentiment-comparison` directory
@@ -436,8 +437,8 @@ When creating a new Web Service on Render:
 Set these in Render dashboard → Environment:
 - `NEWS_API_KEY` - Your NewsAPI key
 - `GROQ_API_KEY` - Your Groq API key (or use `OPENAI_API_KEY` instead)
-- `MONGODB_URI` - MongoDB Atlas connection string (⚠️ **Required** - app won't start without it)
-- `CORS_ORIGINS` - Comma-separated list, e.g., `https://your-site.netlify.app,http://localhost:3000`
+- `MONGODB_URI` - MongoDB Atlas connection string (⚠️ **Required** - app uses this only; `DATABASE_URL` is not used)
+- `CORS_ORIGINS` - Must include your frontend origin (e.g. `https://your-site.netlify.app`) or the browser will block API requests
 
 **Note:** You can create the Render service first and add the `MONGODB_URI` environment variable once you have your Atlas connection string. The app will connect on the next deploy/restart.
 
@@ -446,7 +447,7 @@ Set these in Render dashboard → Environment:
 - Railway: Use scheduled tasks
 - Or use external cron service (cron-job.org) to call an API endpoint
 
-See README.md for detailed deployment instructions.
+See README.md for detailed deployment instructions. For common deployment issues (base directory, CORS, v1 vs vi, smoke test 404), see **README.md → Troubleshooting → Deployment Gotchas**.
 
 ## Next Steps
 

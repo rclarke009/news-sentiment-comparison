@@ -293,7 +293,7 @@ The project includes a GitLab CI pipeline (`.gitlab-ci.yml`) that automates code
 2. **Set CI/CD Variables** (Settings → CI/CD → Variables):
    - `DEV_API_BASE_URL`: Dev API URL (e.g., `https://news-sentiment-api-dev.onrender.com`); used on `develop`
    - `STAGING_API_BASE_URL`: Staging API URL; used on `staging`
-   - `PROD_API_BASE_URL` or `API_BASE_URL`: Production API URL (e.g., `https://news-sentiment-api.onrender.com`); used on `main`/`master`
+   - `PROD_API_BASE_URL` or `API_BASE_URL`: Production API URL for smoke tests and ZAP (e.g., `https://news-sentiment-comparison.onrender.com`). Use the **origin only** (no `/api/v1`)—the smoke script appends the path. Set this in **GitLab only**; it is not an env var on Render. If your Render Web Service has a different hostname, set `API_BASE_URL` to that so the pipeline hits the correct API.
    - `ZAP_SKIP` (optional): Set to `"true"` to skip ZAP jobs (e.g. on MRs)
    - `ZAP_API_KEY` (optional): ZAP API key if using authenticated ZAP instance
 
@@ -643,7 +643,14 @@ If you're experiencing issues in production (e.g., all scores are 0, "No uplifti
 
 NewsAPI free tier allows 100 requests/day. The collector respects rate limits with delays between requests.
 
-## Deployment a
+### Deployment Gotchas (Netlify, Render, GitLab CI)
+
+- **502 / "Application exited early" on Render:** The Web Service must use Start Command `uvicorn news_sentiment.api.main:app --host 0.0.0.0 --port $PORT`. If it is set to `python scripts/run_collector.py`, the process runs once and exits.
+- **CORS errors in browser:** Add your frontend origin (e.g. `https://sentimentlens.netlify.app`) to `CORS_ORIGINS` on the Render API service.
+- **404 on `/api/v1/...`:** Ensure the URL uses **`v1`** (digit one), not **`vi`** (letters). Set Netlify `VITE_API_URL` to `https://your-api.onrender.com/api/v1`.
+- **Smoke tests 404 in pipeline:** Set GitLab CI variable `API_BASE_URL` to your actual Render API host (e.g. `https://news-sentiment-comparison.onrender.com`). The pipeline does not read this from Render.
+
+## Deployment
 
 ### Frontend Deployment (Netlify)
 
@@ -675,18 +682,20 @@ Netlify is perfect for hosting the React frontend as a static site.
    |---------|-------|
    | **Base directory** | `frontend` |
    | **Build command** | `npm run build` |
-   | **Publish directory** | `frontend/dist` |
-   
-   These settings tell Netlify:
-   - Where to find `package.json` (in the `frontend/` subdirectory)
-   - What command to run (`npm run build` from the base directory)
-   - Where the built files are located (`frontend/dist/`)
+   | **Publish directory** | `dist` (relative to base dir) |
+
+   **Important:**
+   - Use **Base directory** `frontend` (not `news-sentiment-comparison/frontend`) when the connected repo *is* the news-sentiment-comparison repo—the clone root is the project root.
+   - **Build command** must be Node/npm only (e.g. `npm run build`). Do **not** use `pip install` or any Python command for the frontend.
+   - **Publish directory** is `dist` (Vite outputs to `frontend/dist`, but Netlify interprets paths relative to the base directory, so use `dist`).
+
+   These settings tell Netlify where to find `package.json`, what command to run, and where the built files are.
 
 3. **Set environment variable:**
    - Go to **Site settings → Environment variables**
    - Add: `VITE_API_URL` = `https://your-api-host.com/api/v1`
-   - Use your deployed backend API URL (from Render/Railway/Fly.io)
-   - **Important:** Redeploy after adding the variable for it to take effect
+   - Use your deployed backend API URL (from Render/Railway/Fly.io). Use the **digit 1** in **`v1`**, not the letters **`vi`**—wrong path causes 404/CORS issues.
+   - **Important:** Redeploy after adding the variable for it to take effect (build-time variable).
 
 4. **SPA Routing (if using React Router):**
    Create `frontend/public/_redirects`:
@@ -720,9 +729,8 @@ Deploy your FastAPI backend to a cloud host that supports Python:
    - **Environment:** Python 3
    - **Build command:** `pip install -r requirements.txt` (or leave blank if auto-detected)
    - **Start command:** `uvicorn news_sentiment.api.main:app --host 0.0.0.0 --port $PORT`
-     - ⚠️ **Critical:** The start command is required. Render sets the `$PORT` environment variable automatically.
-     - `--host 0.0.0.0` allows external connections
-     - The app path is `news_sentiment.api.main:app`
+     - ⚠️ **Critical:** The Web Service must run this uvicorn command. Do **not** use `python scripts/run_collector.py` for the Web Service—that is for the Cron Job only; the collector runs once and exits, which causes "Application exited early."
+     - Render sets the `$PORT` environment variable automatically; `--host 0.0.0.0` allows external connections.
    - **Root Directory:** 
      - **Not needed** if deploying from the `news-sentiment-comparison` directory
      - Only specify if deploying from a parent monorepo (set to `news-sentiment-comparison`)
@@ -731,8 +739,8 @@ Deploy your FastAPI backend to a cloud host that supports Python:
    In Render dashboard → Environment, add:
    - `NEWS_API_KEY` - Your NewsAPI key
    - `GROQ_API_KEY` - Your Groq API key (or use `OPENAI_API_KEY` instead)
-   - `MONGODB_URI` - MongoDB Atlas connection string (required for production)
-   - `CORS_ORIGINS` - Comma-separated list, e.g., `https://your-site.netlify.app,http://localhost:3000`
+   - `MONGODB_URI` - MongoDB Atlas connection string (required for production). The app uses **only** `MONGODB_URI`; `DATABASE_URL` is not used.
+   - `CORS_ORIGINS` - Comma-separated list of allowed frontend origins. Must include your Netlify URL (e.g. `https://sentimentlens.netlify.app`) or the browser will block API requests with CORS errors.
 
 4. **Configure CORS:**
    Update `news_sentiment/api/main.py` to allow your Netlify domain:
