@@ -629,6 +629,8 @@ If you're experiencing issues in production (e.g., all scores are 0, "No uplifti
      - **Solution**: Update `OPENAI_API_KEY` in Render environment variables with the full key
    - **All Scores Zero**: If `avg_uplift: 0.0` in collection results, check for scoring errors in logs
    - **500 Errors**: Check logs for stack traces showing conversion errors or missing data
+   - **Out of memory (Collector OOM)**: `Out of memory (used over 512Mi)` or `distilbert` loading in cron logs
+     - **Solution**: Force the collector to use Groq/OpenAI (no local model). Render Dashboard → Cron Job (`news-sentiment-collector` or `news-sentiment-collector-evening`) → Environment → set `USE_LOCAL_SENTIMENT` = `false` (no quotes). Save, then Manual Deploy or Trigger Run. See **QUICKSTART.md** → [Deploy to Render](QUICKSTART.md#option-a-deploy-to-render-blueprint--recommended) step 6.
 
 4. **After Fixing Issues:**
    - Redeploy the affected service(s) in Render

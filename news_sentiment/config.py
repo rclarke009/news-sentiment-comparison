@@ -210,9 +210,13 @@ class Config(BaseModel):
         )
         cors_origins = [origin.strip() for origin in cors_origins_str.split(",")]
 
-        # USE_LOCAL_SENTIMENT: default True for backward compatibility; set false on memory-limited envs (e.g. Render cron)
-        use_local_raw = os.getenv("USE_LOCAL_SENTIMENT", "true").strip().lower()
-        use_local_sentiment = use_local_raw not in ("false", "0", "no")
+        # USE_LOCAL_SENTIMENT: default True locally; default False on Render (avoids OOM from transformers/torch)
+        use_local_raw = (os.getenv("USE_LOCAL_SENTIMENT") or "").strip()
+        if use_local_raw == "":
+            on_render = os.getenv("RENDER", "").strip().lower() in ("true", "1", "yes")
+            use_local_sentiment = not on_render
+        else:
+            use_local_sentiment = use_local_raw.lower() not in ("false", "0", "no")
 
         return cls(
             news_api=NewsAPIConfig(api_key=news_api_key),

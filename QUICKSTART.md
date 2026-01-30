@@ -298,6 +298,13 @@ The repo includes a `render.yaml` Blueprint that deploys the **API**, **frontend
    ```
    Then trigger a manual run of the collector in Render, or wait for the first scheduled run.
 
+6. **Force collector to use Groq/OpenAI (avoid OOM):**  
+   If the cron hits "Out of memory (used over 512Mi)" or loads DistilBERT, ensure it uses the API instead of the local model:
+   - **Render Dashboard** → **Cron Jobs** → **news-sentiment-collector** (or **news-sentiment-collector-evening**).
+   - **Environment** → Add or edit: **Key** `USE_LOCAL_SENTIMENT`, **Value** `false` (no quotes).
+   - **Save**, then **Manual Deploy** → **Deploy latest commit** (or **Trigger Run** to re-run the cron).
+   The Blueprint sets this in `render.yaml`; set it in the Dashboard if it’s missing or overridden.
+
 ### Using cron-job.org (Free Tier Alternative)
 
 If you're using Render's free tier (which doesn't support cron jobs), use cron-job.org to trigger collection:

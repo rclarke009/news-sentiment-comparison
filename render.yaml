@@ -43,6 +43,7 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: python scripts/run_collector.py
     envVars:
+      # Required: false = use Groq/OpenAI; avoids OOM from transformers/torch on 512Mi
       - key: USE_LOCAL_SENTIMENT
         value: "false"
       - key: NEWS_API_KEY
@@ -62,6 +63,7 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: python scripts/run_collector.py
     envVars:
+      # Required: false = use Groq/OpenAI; avoids OOM from transformers/torch on 512Mi
       - key: USE_LOCAL_SENTIMENT
         value: "false"
       - key: NEWS_API_KEY
