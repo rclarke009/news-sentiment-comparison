@@ -321,7 +321,9 @@ conservative_rss: [
 
 Newsmax is now configured via RSS feeds since it's not available through NewsAPI.
 
-### Puff Piece Keywords
+### Heuristic Uplift Adjustment
+
+A lightweight keyword-based adjustment is applied for commonly uplifting story patterns (e.g., rescues, community aid). This acts as a stabilizing signal alongside LLM scoring and provides predictable behavior when headlines clearly match known positive categories.
 
 Keywords that boost scores for uplifting stories:
 
