@@ -1,6 +1,6 @@
 # News Sentiment Comparison Tool
 
-A production-ready automation platform that orchestrates data collection, API integration, and scheduled workflows. The system automatically fetches headlines from multiple news sources via REST APIs and RSS feeds, processes them through an automated pipeline, and serves results through a RESTful API with a web dashboard. Uses AI-powered sentiment analysis as part of the processing pipeline.
+A production-ready automation platform that orchestrates data collection, API integration, and scheduled workflows. The system automatically fetches headlines from multiple news sources via REST APIs and RSS feeds, processes them through an automated pipeline, and serves results through a RESTful API with a web dashboard. Uses AI-powered sentiment (how emotionally uplifting a headline feels) analysis as part of the processing pipeline.
 
 ## Features
 
@@ -11,7 +11,9 @@ A production-ready automation platform that orchestrates data collection, API in
 - 📡 **Multi-Source Integration**: Integrates with NewsAPI REST service and RSS feeds for comprehensive data collection
 - 🗄️ **MongoDB Storage**: Document-based storage with connection pooling and error recovery
 - ⚛️ **React Frontend**: Modern dashboard with real-time visualizations - [Live Demo](https://sentimentlens.netlify.app)
-- 🤖 **AI-Powered Processing**: Uses LLM APIs (Groq/OpenAI) for sentiment scoring as part of the automated pipeline
+- 🤖 **AI-Powered Processing**: Uses LLM APIs (Groq/OpenAI) for sentiment scoring as part of the automated pipeline.
+- ⏻ **LLM Provider Abstraction**: Designed for future local model comparison. Easily swap Groq / OpenAI
+- 💲 **Rate Limit Awareness**: Rate limit aware headline collection. Optional dry-run mode.  
 - 📊 **Daily Comparisons**: Aggregates and compares sentiment across political sides
 - 📈 **Historical Trends**: Track sentiment changes over time
 
@@ -43,6 +45,33 @@ A production-ready automation platform that orchestrates data collection, API in
        │  React App  │ (Frontend Dashboard)
        └─────────────┘
 ```
+
+## Design Decisions
+
+### Why MongoDB vs relational?
+- **Document-shaped data:** Each daily run naturally produces a “bundle” of related data (headlines + scores + metadata + rollups). MongoDB stores that as a single document (or a small set of documents) without heavy normalization.
+- **Schema flexibility:** News sources, scoring metadata, and fields evolve (e.g., adding new sources, RSS-only fields, new LLM provider attributes). MongoDB lets the schema evolve without frequent migrations.
+- **Read patterns match the model:** The API often answers “give me today,” “give me last N days,” or “give me the most uplifting story.” Those map cleanly to document queries and time-based indexes.
+- **Operational simplicity for this use case:** For an MVP/portfolio system where the goal is reliable ingestion + retrieval, MongoDB provides a straightforward fit with fewer moving parts.
+
+### Why a daily aggregation model?
+- **Stable, comparable snapshots:** A daily rollup (per side + overall stats) creates consistent “apples-to-apples” comparisons over time and makes trends meaningful.
+- **Efficient storage and queries:** Instead of recomputing stats on every request, aggregation happens once per day during collection and is fast to retrieve.
+- **Resilience and replayability:** If a collection run fails, rerunning the collector for a given date can rebuild that day’s snapshot without complicating downstream consumers.
+- **Portfolio clarity:** It demonstrates a common production pattern: batch ingestion → compute → persist → serve.
+
+### Why sentiment on headlines vs full articles?
+- **Scope and cost control:** Full-article retrieval and LLM analysis is significantly more expensive (tokens, latency, rate limits). Headline scoring is lightweight and scalable.
+- **Faster, more reliable pipeline:** Headlines are consistently available from APIs/RSS; full-text often requires scraping, paywalls, inconsistent HTML, and more failure modes.
+- **Appropriate for the goal:** The project compares “uplift” tone of what audiences *see* first—headlines—so the metric aligns with the product intent.
+- **Easy upgrade path:** The design can expand later (e.g., sample a subset of articles for deeper analysis or only run full-article scoring when confidence is low).
+
+### Why FastAPI?
+- **High performance with minimal overhead:** Async-friendly and fast enough for production APIs without heavy framework boilerplate.
+- **Automatic OpenAPI docs:** Built-in request/response validation and interactive docs improve developer experience and make the API easy to demo.
+- **Strong typing and validation:** Pydantic models provide clear contracts, safer refactors, and predictable JSON output.
+- **Great fit for microservices:** Clean separation of endpoints (today/history/stats/collect/health) and easy container/cloud deployment.
+
 
 ## CI/CD Pipeline (GitLab CI)
 
@@ -206,7 +235,7 @@ news-sentiment-comparison/
 │   ├── collector.py          # Main orchestration
 │   ├── api/                  # FastAPI application
 │   └── utils/                # Utilities (logging, scheduling)
-├── frontend/                 # React frontend (coming soon)
+├── frontend/                 # React frontend
 ├── scripts/                  # CLI scripts
 │   └── run_collector.py      # Manual collection script
 ├── tests/                    # Test suite
@@ -230,6 +259,41 @@ news-sentiment-comparison/
 
 ### Health
 - `GET /api/v1/health` - Health check
+
+### Example Response
+
+```json
+{
+  "date": "2026-01-30",
+  "summary": {
+    "conservative": {
+      "average_uplift": -0.8,
+      "headline_count": 24
+    },
+    "liberal": {
+      "average_uplift": 0.6,
+      "headline_count": 26
+    }
+  },
+  "most_uplifting": {
+    "conservative": {
+      "source": "Fox News",
+      "headline": "Community rallies to rebuild homes after winter storms",
+      "uplift_score": 3.5
+    },
+    "liberal": {
+      "source": "CNN",
+      "headline": "Local volunteers rescue stranded animals during floods",
+      "uplift_score": 4.2
+    }
+  },
+  "metadata": {
+    "generated_at": "2026-01-30T10:02:14Z",
+    "model_provider": "groq",
+    "confidence": "medium"
+  }
+}
+```
 
 ## Configuration
 
