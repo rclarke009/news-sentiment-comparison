@@ -259,6 +259,19 @@ async def get_today(request: Request):
 )
 async def get_date(date_str: str, request: Request):
     """Get comparison for a specific date (YYYY-MM-DD)."""
+    # #region agent log
+    import time
+    import json
+    from pathlib import Path
+    _debug_path = Path(__file__).resolve().parents[3] / ".cursor" / "debug.log"
+    def _log(payload: dict) -> None:
+        try:
+            with open(_debug_path, "a") as f:
+                f.write(json.dumps(payload) + "\n")
+        except Exception:
+            pass
+    _log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H1_H2_H5", "location": "routes.py:get_date", "message": "get_date_entry", "data": {"date_str": date_str}, "timestamp": int(time.time() * 1000)})
+    # #endregion
     try:
         # Validate date format
         datetime.strptime(date_str, "%Y-%m-%d")
@@ -270,6 +283,9 @@ async def get_date(date_str: str, request: Request):
     try:
         db = get_db()
         comparison = db.get_daily_comparison(date_str)
+        # #region agent log
+        _log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H1_H2", "location": "routes.py:get_date", "message": "get_date_after_get", "data": {"date_str": date_str, "found": comparison is not None}, "timestamp": int(time.time() * 1000)})
+        # #endregion
 
         if not comparison:
             logger.info("No comparison for date %s", date_str)
@@ -281,6 +297,26 @@ async def get_date(date_str: str, request: Request):
     except HTTPException:
         raise
     except Exception as e:
+        # #region agent log — capture exception for debug (e.g. local repro or Render logs)
+        import traceback
+        try:
+            _log({
+                "sessionId": "debug-session",
+                "runId": "run1",
+                "hypothesisId": "get_date_500",
+                "location": "routes.py:get_date",
+                "message": "get_date_exception",
+                "data": {
+                    "date_str": date_str,
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                    "traceback": traceback.format_exc(),
+                },
+                "timestamp": int(time.time() * 1000),
+            })
+        except Exception:
+            pass
+        # #endregion
         context = _get_request_context(request)
         logger.error(
             f"Error fetching comparison for date {date_str} - {context}: {e}",

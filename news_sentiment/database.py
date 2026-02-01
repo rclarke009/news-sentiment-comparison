@@ -26,9 +26,10 @@ logger = logging.getLogger(__name__)
 
 # #region agent log
 try:
-    _DEBUG_LOG_PATH = Path(__file__).resolve().parents[3] / ".cursor" / "debug.log"
+    # parents[2] = workspace root (conceptprojects); from news_sentiment/database.py
+    _DEBUG_LOG_PATH = Path(__file__).resolve().parents[2] / ".cursor" / "debug.log"
 except IndexError:
-    _DEBUG_LOG_PATH = None  # e.g. in Docker /app has no parents[3]
+    _DEBUG_LOG_PATH = None  # e.g. in Docker /app has no parents[2]
 
 
 def _agent_log(payload: dict) -> None:
@@ -447,10 +448,14 @@ class NewsDatabase:
                 {
                     "sessionId": "debug-session",
                     "runId": "run1",
-                    "hypothesisId": "H4_H7_H8",
+                    "hypothesisId": "H1_H2_H4",
                     "location": "database.py:get_daily_comparison",
                     "message": "get_daily_comparison_result",
-                    "data": {"date": date, "found": doc is not None},
+                    "data": {
+                        "date": date,
+                        "found": doc is not None,
+                        "stored_date": doc.get("date") if doc else None,
+                    },
                     "timestamp": int(time.time() * 1000),
                 }
             )
@@ -465,9 +470,43 @@ class NewsDatabase:
 
                 return DailyComparison(**doc)
 
+            # #region agent log — no doc for this date; sample one doc to see stored date format
+            try:
+                sample = collection.find_one({}, {"date": 1})
+                _agent_log(
+                    {
+                        "sessionId": "debug-session",
+                        "runId": "run1",
+                        "hypothesisId": "H1_H2",
+                        "location": "database.py:get_daily_comparison",
+                        "message": "get_daily_comparison_miss",
+                        "data": {
+                            "date": date,
+                            "sample_date": sample.get("date") if sample else None,
+                            "collection_has_docs": sample is not None,
+                        },
+                        "timestamp": int(time.time() * 1000),
+                    }
+                )
+            except Exception:
+                pass
+            # #endregion
             return None
 
         except Exception as e:
+            # #region agent log
+            _agent_log(
+                {
+                    "sessionId": "debug-session",
+                    "runId": "run1",
+                    "hypothesisId": "H4",
+                    "location": "database.py:get_daily_comparison",
+                    "message": "get_daily_comparison_exception",
+                    "data": {"date": date, "error": str(e)},
+                    "timestamp": int(time.time() * 1000),
+                }
+            )
+            # #endregion
             logger.error(
                 f"Error getting daily comparison for date {date}: {e}", exc_info=True
             )
