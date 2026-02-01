@@ -25,11 +25,16 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 # #region agent log
-_DEBUG_LOG_PATH = Path(__file__).resolve().parents[3] / ".cursor" / "debug.log"
+try:
+    _DEBUG_LOG_PATH = Path(__file__).resolve().parents[3] / ".cursor" / "debug.log"
+except IndexError:
+    _DEBUG_LOG_PATH = None  # e.g. in Docker /app has no parents[3]
 
 
 def _agent_log(payload: dict) -> None:
     try:
+        if _DEBUG_LOG_PATH is None:
+            return
         with open(_DEBUG_LOG_PATH, "a") as f:
             f.write(json.dumps(payload) + "\n")
     except Exception:
