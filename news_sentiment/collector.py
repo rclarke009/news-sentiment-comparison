@@ -28,6 +28,8 @@ _DEBUG_LOG_PATH = Path(__file__).resolve().parents[2] / ".cursor" / "debug.log"
 
 
 def _agent_log(payload: dict) -> None:
+    if "conceptprojects" not in str(_DEBUG_LOG_PATH):
+        return
     try:
         with open(_DEBUG_LOG_PATH, "a") as f:
             f.write(json.dumps(payload) + "\n")

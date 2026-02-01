@@ -50,15 +50,46 @@ def get_comparison_for_date(date_str: str) -> Optional[DailyComparison]:
     Get daily comparison for date, using cache when enabled.
     On cache miss, fetches from DB and populates cache.
     """
+    # #region agent log (only write when running in workspace to avoid slow file I/O on Render)
+    import json
+    import time
+    from pathlib import Path
+    _resolved = Path(__file__).resolve()
+    _debug_path = _resolved.parents[3] / ".cursor" / "debug.log"
+    def _agent_log(p: dict) -> None:
+        if "conceptprojects" not in str(_resolved):
+            return
+        try:
+            with open(_debug_path, "a") as f:
+                f.write(json.dumps(p) + "\n")
+        except Exception:
+            pass
+    _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H1_H2_H5", "location": "routes.py:get_comparison_for_date", "message": "entry", "data": {"date_str": date_str}, "timestamp": int(time.time() * 1000)})
+    # #endregion
     cache = get_cache()
+    comparison = None
+    cache_hit = False
     if cache is not None:
         comparison = cache.get(date_str)
+        cache_hit = comparison is not None
+        # #region agent log
+        _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H1_H5", "location": "routes.py:get_comparison_for_date", "message": "after_cache_get", "data": {"date_str": date_str, "cache_hit": cache_hit}, "timestamp": int(time.time() * 1000)})
+        # #endregion
         if comparison is not None:
             return comparison
     db = get_db()
     comparison = db.get_daily_comparison(date_str)
+    # #region agent log
+    _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H2", "location": "routes.py:get_comparison_for_date", "message": "after_db_get", "data": {"date_str": date_str, "db_found": comparison is not None}, "timestamp": int(time.time() * 1000)})
+    # #endregion
     if cache is not None and comparison is not None:
         cache.set(date_str, comparison)
+    logger.info(
+        "get_comparison_for_date date=%s cache_hit=%s db_found=%s",
+        date_str,
+        cache_hit,
+        comparison is not None,
+    )
     return comparison
 
 
@@ -142,14 +173,17 @@ async def health_check_db(request: Request):
 @router.get("/today", response_model=DailyComparisonResponse, tags=["comparisons"])
 async def get_today(request: Request):
     """Get today's comparison."""
-    # #region agent log
+    # #region agent log (only write when running in workspace to avoid slow file I/O on Render)
     import time
     import json
     from pathlib import Path
 
-    _DEBUG_LOG_PATH = Path(__file__).resolve().parents[3] / ".cursor" / "debug.log"
+    _resolved_today = Path(__file__).resolve()
+    _DEBUG_LOG_PATH = _resolved_today.parents[3] / ".cursor" / "debug.log"
 
     def _agent_log(payload: dict) -> None:
+        if "conceptprojects" not in str(_resolved_today):
+            return
         try:
             with open(_DEBUG_LOG_PATH, "a") as f:
                 f.write(json.dumps(payload) + "\n")
@@ -276,12 +310,15 @@ async def get_today(request: Request):
 )
 async def get_date(date_str: str, request: Request):
     """Get comparison for a specific date (YYYY-MM-DD)."""
-    # #region agent log
+    # #region agent log (only write when running in workspace to avoid slow file I/O on Render)
     import time
     import json
     from pathlib import Path
-    _debug_path = Path(__file__).resolve().parents[3] / ".cursor" / "debug.log"
+    _resolved = Path(__file__).resolve()
+    _debug_path = _resolved.parents[3] / ".cursor" / "debug.log"
     def _log(payload: dict) -> None:
+        if "conceptprojects" not in str(_resolved):
+            return
         try:
             with open(_debug_path, "a") as f:
                 f.write(json.dumps(payload) + "\n")
@@ -651,14 +688,17 @@ async def get_model_comparison(
 
     Returns correlation stats, agreement rate, and divergence examples.
     """
-    # #region agent log
+    # #region agent log (only write when running in workspace to avoid slow file I/O on Render)
     import time
     import json
     from pathlib import Path
 
-    _DEBUG_LOG_PATH = Path(__file__).resolve().parents[3] / ".cursor" / "debug.log"
+    _resolved_model = Path(__file__).resolve()
+    _DEBUG_LOG_PATH = _resolved_model.parents[3] / ".cursor" / "debug.log"
 
     def _agent_log(payload: dict) -> None:
+        if "conceptprojects" not in str(_resolved_model):
+            return
         try:
             with open(_DEBUG_LOG_PATH, "a") as f:
                 f.write(json.dumps(payload) + "\n")

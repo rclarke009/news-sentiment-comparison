@@ -34,7 +34,7 @@ except IndexError:
 
 def _agent_log(payload: dict) -> None:
     try:
-        if _DEBUG_LOG_PATH is None:
+        if _DEBUG_LOG_PATH is None or "conceptprojects" not in str(_DEBUG_LOG_PATH):
             return
         with open(_DEBUG_LOG_PATH, "a") as f:
             f.write(json.dumps(payload) + "\n")

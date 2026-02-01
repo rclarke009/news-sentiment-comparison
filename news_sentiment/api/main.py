@@ -21,11 +21,13 @@ from news_sentiment.cache import create_cache_from_config, set_cache
 logger = logging.getLogger(__name__)
 config = get_config()
 
-# #region agent log
+# #region agent log (only write when running in workspace to avoid slow file I/O on Render)
 _DEBUG_LOG_PATH = Path(__file__).resolve().parents[3] / ".cursor" / "debug.log"
 
 
 def _agent_log(payload: dict) -> None:
+    if "conceptprojects" not in str(_DEBUG_LOG_PATH):
+        return
     try:
         with open(_DEBUG_LOG_PATH, "a") as f:
             f.write(json.dumps(payload) + "\n")
