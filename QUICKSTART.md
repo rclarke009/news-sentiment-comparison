@@ -119,6 +119,32 @@ cd frontend && npm run dev
 python scripts/run_collector.py
 ```
 
+### Caching
+
+The API caches daily comparison reads (for `/today`, `/date/{date}`, and `/most-uplifting`) in memory by date. **What is cached:** Results of `get_daily_comparison(date)` keyed by `YYYY-MM-DD`. **TTL:** "Today" (UTC) uses a short TTL (default 5 minutes) so that after the collector runs, the API serves fresh data within a few minutes. Past dates use a longer TTL (default 24 hours). **Invalidation:** When the API process writes a daily comparison (e.g. via an admin endpoint), the cache for that date is invalidated so the next read sees fresh data. **Cross-process:** The collector runs in a separate process (cron or script), so when it saves data, the API's in-memory cache is *not* invalidated; staleness for that date is cleared only when the cache entry's TTL expires. Rely on the short TTL for "today" so fresh "today" data appears soon after the collector runs.
+
+**Architecture before cache (every request hits the database):**
+
+```
+Client  ──►  FastAPI Routes  ──►  MongoDB  (every request)
+```
+
+**Architecture after cache (cache hit avoids DB; miss fills cache):**
+
+```
+Client  ──►  FastAPI Routes  ──►  Cache (hit)  ──►  return
+                    │
+                    └──►  Cache (miss)  ──►  MongoDB  ──►  set cache  ──►  return
+```
+
+**Environment variables (optional):**
+
+| Variable | Default | Description |
+|----------|---------|--------------|
+| `CACHE_ENABLED` | (enabled) | Set to `false` or `0` to disable caching. |
+| `CACHE_TTL_TODAY_SECONDS` | `300` | TTL in seconds for "today" (5 min). |
+| `CACHE_TTL_PAST_SECONDS` | `86400` | TTL in seconds for past dates (24 h). |
+
 ### Render (production)
 
 | What changed | API | Frontend | Cron (collector) |

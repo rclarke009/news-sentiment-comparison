@@ -9,6 +9,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, Header, Request
 import requests
 
+from news_sentiment.cache import get_cache
 from news_sentiment.config import get_config
 from news_sentiment.database import NewsDatabase
 from news_sentiment.collector import NewsCollector
@@ -42,6 +43,23 @@ def get_db() -> NewsDatabase:
             # Re-raise as a more specific exception that route handlers can catch
             raise
     return _db_instance
+
+
+def get_comparison_for_date(date_str: str) -> Optional[DailyComparison]:
+    """
+    Get daily comparison for date, using cache when enabled.
+    On cache miss, fetches from DB and populates cache.
+    """
+    cache = get_cache()
+    if cache is not None:
+        comparison = cache.get(date_str)
+        if comparison is not None:
+            return comparison
+    db = get_db()
+    comparison = db.get_daily_comparison(date_str)
+    if cache is not None and comparison is not None:
+        cache.set(date_str, comparison)
+    return comparison
 
 
 # Acronyms for NewsAPI source IDs (lowercase id -> display name)
@@ -164,7 +182,6 @@ async def get_today(request: Request):
             }
         )
         # #endregion
-        db = get_db()
         # Use UTC date consistently (Render servers use UTC)
         today = datetime.utcnow().date().isoformat()
         # #region agent log
@@ -180,7 +197,7 @@ async def get_today(request: Request):
             }
         )
         # #endregion
-        comparison = db.get_daily_comparison(today)
+        comparison = get_comparison_for_date(today)
         # #region agent log
         _agent_log(
             {
@@ -281,8 +298,7 @@ async def get_date(date_str: str, request: Request):
         )
 
     try:
-        db = get_db()
-        comparison = db.get_daily_comparison(date_str)
+        comparison = get_comparison_for_date(date_str)
         # #region agent log
         _log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H1_H2", "location": "routes.py:get_date", "message": "get_date_after_get", "data": {"date_str": date_str, "found": comparison is not None}, "timestamp": int(time.time() * 1000)})
         # #endregion
@@ -382,8 +398,7 @@ async def get_most_uplifting(
             )
 
     try:
-        db = get_db()
-        comparison = db.get_daily_comparison(date_str)
+        comparison = get_comparison_for_date(date_str)
 
         if not comparison:
             raise HTTPException(

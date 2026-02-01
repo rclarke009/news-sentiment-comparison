@@ -16,6 +16,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from news_sentiment.config import get_config
 from news_sentiment.api import routes
+from news_sentiment.cache import create_cache_from_config, set_cache
 
 logger = logging.getLogger(__name__)
 config = get_config()
@@ -179,6 +180,10 @@ async def root():
 async def startup_event():
     """Initialize on startup."""
     logger.info("News Sentiment Comparison API starting up...")
+    cache = create_cache_from_config()
+    if cache is not None:
+        set_cache(cache)
+        logger.info("Daily comparison cache enabled (TTL today/past from config).")
     # #region agent log
     _agent_log(
         {

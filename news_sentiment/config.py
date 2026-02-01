@@ -107,6 +107,23 @@ class SourceConfig(BaseModel):
     )
 
 
+class CacheConfig(BaseModel):
+    """In-memory cache configuration for daily comparison reads."""
+
+    cache_enabled: bool = Field(
+        default=True,
+        description="If true, cache get_daily_comparison results by date.",
+    )
+    cache_ttl_today_seconds: int = Field(
+        default=300,
+        description="TTL in seconds for 'today' (short so collector updates appear soon).",
+    )
+    cache_ttl_past_seconds: int = Field(
+        default=86400,
+        description="TTL in seconds for past dates (24 hours).",
+    )
+
+
 class PuffPieceConfig(BaseModel):
     """Configuration for puff piece keyword boosting."""
 
@@ -151,6 +168,10 @@ class Config(BaseModel):
     api: APIConfig
     sources: SourceConfig
     puff_pieces: PuffPieceConfig
+    cache: CacheConfig = Field(
+        default_factory=CacheConfig,
+        description="Cache settings for daily comparison reads.",
+    )
     log_level: str = "INFO"
     collection_schedule: str = "0 10 * * *"  # Daily at 6 AM
     use_local_sentiment: bool = Field(
@@ -218,6 +239,16 @@ class Config(BaseModel):
         else:
             use_local_sentiment = use_local_raw.lower() not in ("false", "0", "no")
 
+        # Cache
+        cache_enabled_raw = (os.getenv("CACHE_ENABLED") or "").strip()
+        cache_enabled = (
+            cache_enabled_raw.lower() not in ("false", "0", "no")
+            if cache_enabled_raw
+            else True
+        )
+        cache_ttl_today = int(os.getenv("CACHE_TTL_TODAY_SECONDS", "300"))
+        cache_ttl_past = int(os.getenv("CACHE_TTL_PAST_SECONDS", "86400"))
+
         return cls(
             news_api=NewsAPIConfig(api_key=news_api_key),
             llm=LLMConfig(
@@ -235,6 +266,11 @@ class Config(BaseModel):
             ),
             sources=SourceConfig(),  # Use defaults
             puff_pieces=PuffPieceConfig(),  # Use defaults
+            cache=CacheConfig(
+                cache_enabled=cache_enabled,
+                cache_ttl_today_seconds=cache_ttl_today,
+                cache_ttl_past_seconds=cache_ttl_past,
+            ),
             log_level=os.getenv("LOG_LEVEL", "INFO"),
             collection_schedule=os.getenv("COLLECTION_SCHEDULE", "0 10 * * *"),
             use_local_sentiment=use_local_sentiment,

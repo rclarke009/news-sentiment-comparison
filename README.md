@@ -372,6 +372,46 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
+### Caching
+
+Daily comparison reads (`/today`, `/date/{date}`, `/most-uplifting`) are cached in memory by date. **TTL:** "Today" (UTC) uses a short TTL (default 5 min); past dates use a longer TTL (default 24 h). **Invalidation:** Same-process writes invalidate the cache for that date; the collector runs in a separate process, so its writes do not invalidate the API cache—staleness is cleared when the TTL expires. **Env vars:** `CACHE_ENABLED`, `CACHE_TTL_TODAY_SECONDS`, `CACHE_TTL_PAST_SECONDS`. See **QUICKSTART.md** → [Caching](QUICKSTART.md#caching) for details.
+
+**Architecture before cache (every request hits the database):**
+
+```
+┌─────────────┐     GET /today or /date/YYYY-MM-DD     ┌─────────────┐
+│   Client    │ ────────────────────────────────────► │  FastAPI    │
+│ (Frontend)  │                                        │   Routes    │
+└─────────────┘                                        └──────┬──────┘
+                                                              │
+                                                              │ get_daily_comparison(date)
+                                                              ▼
+                                                       ┌─────────────┐
+                                                       │  MongoDB    │
+                                                       │ (every req) │
+                                                       └─────────────┘
+```
+
+**Architecture after cache (cache hit avoids DB; miss fills cache):**
+
+```
+┌─────────────┐     GET /today or /date/YYYY-MM-DD     ┌─────────────┐
+│   Client    │ ────────────────────────────────────► │  FastAPI    │
+│ (Frontend)  │                                        │   Routes    │
+└─────────────┘                                        └──────┬──────┘
+                                                              │
+                                    ┌─────────────────────────┼─────────────────────────┐
+                                    │                         │                         │
+                                    ▼                         │                         ▼
+                             ┌─────────────┐                  │                  ┌─────────────┐
+                             │   Cache     │  hit              │  miss           │  MongoDB    │
+                             │ (in-memory) │ ─────────────────┘                 │             │
+                             └─────────────┘                                     └──────┬──────┘
+                                    ▲                                                  │
+                                    │ set(date, comparison)                            │
+                                    └──────────────────────────────────────────────────┘
+```
+
 ### CI/CD Pipeline (GitLab CI)
 
 See above for a summary of stages and how CI interacts with production.

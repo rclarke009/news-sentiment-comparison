@@ -393,6 +393,14 @@ class NewsDatabase:
             )
             # #endregion
             logger.info(f"Saved daily comparison for {comparison.date}")
+            # Invalidate cache so same-process readers see fresh data (collector is separate process, so no-op there)
+            try:
+                from news_sentiment.cache import get_cache
+                cache = get_cache()
+                if cache is not None:
+                    cache.invalidate(comparison.date)
+            except Exception:
+                pass
             return True
 
         except Exception as e:
