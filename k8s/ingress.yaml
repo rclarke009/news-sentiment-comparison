@@ -1,0 +1,40 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: news-sentiment-ingress
+  namespace: news-sentiment
+  labels:
+    app: news-sentiment
+  annotations:
+    # Nginx ingress controller annotations
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    
+    # Rate limiting (optional)
+    nginx.ingress.kubernetes.io/limit-rps: "10"
+    
+    # CORS headers (if not handled by application)
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://sentimentlens.netlify.app"
+    
+    # TLS/SSL (cert-manager annotations for automatic certificate provisioning)
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx  # Use your ingress controller class
+  
+  tls:
+    - hosts:
+        - api.sentimentlens.com  # Replace with your domain
+      secretName: news-sentiment-tls
+  
+  rules:
+    - host: api.sentimentlens.com  # Replace with your domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: news-sentiment-api-service
+                port:
+                  number: 80

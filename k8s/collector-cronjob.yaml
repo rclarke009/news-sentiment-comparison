@@ -1,0 +1,90 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: news-sentiment-collector
+  namespace: news-sentiment
+  labels:
+    app: news-sentiment-collector
+    tier: batch
+spec:
+  # Schedule: Daily at 10:00 AM UTC
+  schedule: "0 10 * * *"
+  
+  # Keep last 3 successful and 1 failed job for debugging
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  
+  # Don't allow concurrent runs (wait for previous to finish)
+  concurrencyPolicy: Forbid
+  
+  jobTemplate:
+    spec:
+      # Retry failed jobs up to 2 times
+      backoffLimit: 2
+      
+      # Clean up completed jobs after 1 hour
+      ttlSecondsAfterFinished: 3600
+      
+      template:
+        metadata:
+          labels:
+            app: news-sentiment-collector
+            tier: batch
+        spec:
+          restartPolicy: OnFailure
+          
+          containers:
+            - name: collector
+              image: your-registry/news-sentiment-api:latest  # Same image as API
+              imagePullPolicy: Always
+              command: ["python", "scripts/run_collector.py"]
+              
+              env:
+                # Load from ConfigMap
+                - name: LOG_LEVEL
+                  valueFrom:
+                    configMapKeyRef:
+                      name: news-sentiment-config
+                      key: LOG_LEVEL
+                - name: MONGODB_URI
+                  valueFrom:
+                    configMapKeyRef:
+                      name: news-sentiment-config
+                      key: MONGODB_URI
+                - name: USE_LOCAL_SENTIMENT
+                  valueFrom:
+                    configMapKeyRef:
+                      name: news-sentiment-config
+                      key: USE_LOCAL_SENTIMENT
+                
+                # Load secrets
+                - name: NEWS_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: news-sentiment-secrets
+                      key: NEWS_API_KEY
+                - name: GROQ_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: news-sentiment-secrets
+                      key: GROQ_API_KEY
+                - name: OPENAI_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: news-sentiment-secrets
+                      key: OPENAI_API_KEY
+                      optional: true
+              
+              resources:
+                requests:
+                  memory: "512Mi"
+                  cpu: "250m"
+                limits:
+                  memory: "1Gi"
+                  cpu: "500m"
+          
+          # Security context
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000

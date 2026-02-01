@@ -6,6 +6,7 @@ A production-ready automation platform that orchestrates data collection, API in
 
 - 🔄 **Automated Data Collection**: Scheduled workflows orchestrate daily headline collection from multiple sources via REST APIs and RSS feeds
 - 🚀 **FastAPI Backend**: Production-ready RESTful API with health checks, authentication, and comprehensive error handling
+- 🐳 **Docker & Kubernetes**: Containerized deployment with multi-stage builds, Docker Compose for local dev, and K8s manifests for production orchestration
 - ⚙️ **Infrastructure as Code**: Complete deployment automation via Render Blueprint (render.yaml) for multi-service architecture
 - 🔐 **Secure API Endpoints**: Protected collection endpoints with secret-based authentication for external cron triggers
 - 📡 **Multi-Source Integration**: Integrates with NewsAPI REST service and RSS feeds for comprehensive data collection
@@ -103,13 +104,37 @@ See [Development](#development) for CI/CD setup (variables, local testing).
 - Python 3.9+
 - MongoDB (local or Atlas)
 - Node.js 18+ (for React frontend)
+- Docker & Docker Compose (optional, for containerized deployment)
 - API Keys:
   - NewsAPI.org (free tier: 100 requests/day)
   - Groq API (free tier available) OR OpenAI API
 
 ## Quick Start
 
-### 1. Clone and Setup
+### Option A: Docker (Recommended for Quick Setup)
+
+```bash
+# Copy environment file
+cp .env.example .env
+# Edit .env with your API keys
+
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Run manual collection
+docker-compose run --rm collector
+```
+
+**API**: http://localhost:8000 | **Docs**: http://localhost:8000/docs
+
+See [DOCKER.md](DOCKER.md) for complete Docker guide.
+
+### Option B: Local Python Setup
+
+#### 1. Clone and Setup
 
 ```bash
 cd news-sentiment-comparison
@@ -717,6 +742,58 @@ NewsAPI free tier allows 100 requests/day. The collector respects rate limits wi
 - **Smoke tests 404 in pipeline:** Set GitLab CI variable `API_BASE_URL` to your actual Render API host (e.g. `https://news-sentiment-comparison.onrender.com`). The pipeline does not read this from Render.
 
 ## Deployment
+
+### Docker Deployment (Local Development)
+
+Use Docker for consistent local development environment:
+
+```bash
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Run collector
+docker-compose run --rm collector
+
+# Stop services
+docker-compose down
+```
+
+**Complete Docker guide**: [DOCKER.md](DOCKER.md)
+
+### Kubernetes Deployment (Production Orchestration)
+
+Deploy to Kubernetes for production-grade orchestration with auto-scaling, self-healing, and high availability:
+
+```bash
+# Build and push image
+docker build -t your-registry/news-sentiment-api:latest .
+docker push your-registry/news-sentiment-api:latest
+
+# Deploy to cluster
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/secrets.yaml
+kubectl apply -f k8s/mongodb-statefulset.yaml
+kubectl apply -f k8s/api-deployment.yaml
+kubectl apply -f k8s/collector-cronjob.yaml
+
+# Optional: Ingress and autoscaling
+kubectl apply -f k8s/ingress.yaml
+kubectl apply -f k8s/hpa.yaml
+```
+
+**Complete Kubernetes guide**: [k8s/README.md](k8s/README.md)
+
+**Key features**:
+- Multi-replica API deployment (3+ pods)
+- StatefulSet for MongoDB with persistent storage
+- CronJob for scheduled collection
+- HorizontalPodAutoscaler for traffic-based scaling
+- Ingress for external access with TLS
+- Health checks and self-healing
 
 ### Frontend Deployment (Netlify)
 

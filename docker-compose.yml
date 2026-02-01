@@ -1,0 +1,128 @@
+services:
+  # MongoDB database
+  mongodb:
+    image: mongo:7.0
+    container_name: news-sentiment-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: news_sentiment
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    networks:
+      - news-sentiment-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # FastAPI backend
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development  # Use development stage for hot reload
+    container_name: news-sentiment-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # MongoDB connection (use service name as hostname)
+      MONGODB_URI: mongodb://mongodb:27017/news_sentiment
+      
+      # API Configuration
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      ENV: development
+      LOG_LEVEL: INFO
+      
+      # CORS (allow frontend)
+      CORS_ORIGINS: http://localhost:3000,http://localhost:5173,http://localhost:80
+      
+      # API Keys (load from .env file)
+      NEWS_API_KEY: ${NEWS_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      
+      # Cron secret (for manual collection triggers)
+      CRON_SECRET_KEY: ${CRON_SECRET_KEY:-dev-secret-key}
+      
+      # Optional: Disable local sentiment model to save memory
+      USE_LOCAL_SENTIMENT: ${USE_LOCAL_SENTIMENT:-false}
+    volumes:
+      # Mount source code for hot reload in development
+      - ./news_sentiment:/app/news_sentiment
+      - ./scripts:/app/scripts
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - news-sentiment-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Optional: Collector service (runs on schedule or manually)
+  collector:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: news-sentiment-collector
+    restart: "no"  # Don't auto-restart; run manually or via cron
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017/news_sentiment
+      NEWS_API_KEY: ${NEWS_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      LOG_LEVEL: INFO
+      USE_LOCAL_SENTIMENT: ${USE_LOCAL_SENTIMENT:-false}
+    volumes:
+      - ./news_sentiment:/app/news_sentiment
+      - ./scripts:/app/scripts
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - news-sentiment-network
+    command: ["python", "scripts/run_collector.py"]
+    profiles:
+      - collector  # Only start when explicitly requested
+
+  # Optional: Frontend (React + Vite)
+  frontend:
+    image: node:20-alpine
+    container_name: news-sentiment-frontend
+    restart: unless-stopped
+    working_dir: /app
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:8000/api/v1
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  # Anonymous volume for node_modules
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    depends_on:
+      - api
+    networks:
+      - news-sentiment-network
+    profiles:
+      - frontend  # Only start when explicitly requested
+
+networks:
+  news-sentiment-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
