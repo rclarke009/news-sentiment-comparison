@@ -1,0 +1,2 @@
+# Normalize line endings so Black (and CI) see the same file as local
+*.py text eol=lf
