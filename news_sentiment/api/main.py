@@ -4,6 +4,7 @@ FastAPI application main file.
 
 import os
 import logging
+import time
 from datetime import datetime
 
 from fastapi import FastAPI, Request, status
@@ -13,6 +14,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from news_sentiment.config import get_config
 from news_sentiment.api import routes
+from news_sentiment.api.metrics import get_metrics_output, record_request, register_metrics
 from news_sentiment.cache import create_cache_from_config, set_cache
 
 logger = logging.getLogger(__name__)
@@ -57,6 +59,27 @@ app.add_middleware(
     allow_headers=["Content-Type", "Accept", "X-Cron-Secret"],
 )
 
+
+class PrometheusMetricsMiddleware(BaseHTTPMiddleware):
+    """Record request count and duration for Prometheus. Skip /metrics to avoid feedback."""
+
+    async def dispatch(self, request: Request, call_next):
+        if request.url.path == "/metrics":
+            return await call_next(request)
+        start = time.perf_counter()
+        response = await call_next(request)
+        duration = time.perf_counter() - start
+        record_request(
+            method=request.method,
+            path=request.url.path,
+            status_code=response.status_code,
+            duration_seconds=duration,
+        )
+        return response
+
+
+app.add_middleware(PrometheusMetricsMiddleware)
+
 # Include routers
 app.include_router(routes.router, prefix="/api/v1")
 
@@ -98,6 +121,17 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
+@app.get("/metrics")
+async def metrics():
+    """Prometheus scrape endpoint. Returns text format."""
+    from fastapi.responses import Response
+
+    return Response(
+        content=get_metrics_output(),
+        media_type="text/plain; version=0.0.4; charset=utf-8",
+    )
+
+
 @app.get("/")
 async def root():
     """Root endpoint - provides API information."""
@@ -115,6 +149,7 @@ async def root():
 async def startup_event():
     """Initialize on startup."""
     logger.info("News Sentiment Comparison API starting up...")
+    register_metrics()
     cache = create_cache_from_config()
     if cache is not None:
         set_cache(cache)

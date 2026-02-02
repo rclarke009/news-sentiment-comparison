@@ -292,6 +292,16 @@ curl -X POST http://localhost:8000/api/v1/collect \
 
 ---
 
+## Observability (Prometheus and Grafana)
+
+The API exposes a **Prometheus metrics** endpoint at **GET /metrics** (request count and latency by path). You can scrape it with the **go-monitor** Prometheus stack and view dashboards in Grafana.
+
+1. **Scrape from go-monitor:** When the API is reachable on the host (e.g. K8s LoadBalancer on port 80 or port-forward on 8000), run the **go-monitor** project (`docker-compose up` from the `go-monitor` directory). Its Prometheus is configured to scrape the News Sentiment API at `host.docker.internal:80` (or adjust the target in `go-monitor/prometheus/prometheus.yml` if the API is on a different host/port, e.g. `host.docker.internal:8000` for port-forward).
+
+2. **Grafana dashboard:** The go-monitor stack includes a pre-provisioned dashboard **"News Sentiment API Dashboard"** (request rate, latency p95, error rate). Open Grafana at http://localhost:3000 (default login admin/admin) and select that dashboard when both the API and go-monitor are running.
+
+---
+
 ## See also
 
 - Full Kubernetes reference: [k8s/README.md](k8s/README.md)
