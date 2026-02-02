@@ -10,10 +10,7 @@ from pymongo.database import Database
 from pymongo.errors import ConnectionFailure
 
 from news_sentiment.config import get_config
-from news_sentiment.models import (
-    Headline,
-    DailyComparison,
-)
+from news_sentiment.models import Headline, DailyComparison
 
 try:
     from pydantic_core import Url as PydanticUrl

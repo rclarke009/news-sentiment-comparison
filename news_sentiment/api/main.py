@@ -28,7 +28,10 @@ _docs_enabled = not _is_production or _enable_docs
 
 app = FastAPI(
     title="News Sentiment Comparison API",
-    description="API for comparing sentiment and uplift scores between conservative and liberal news sources",
+    description=(
+        "API for comparing sentiment and uplift scores between "
+        "conservative and liberal news sources"
+    ),
     version="0.1.0",
     docs_url="/docs" if _docs_enabled else None,
     redoc_url="/redoc" if _docs_enabled else None,

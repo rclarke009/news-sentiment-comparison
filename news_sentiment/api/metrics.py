@@ -26,7 +26,7 @@ def _normalize_path(path: str) -> str:
     if path == "/metrics":
         return "metrics"
     if path.startswith(_PATH_PREFIX):
-        suffix = path[len(_PATH_PREFIX) :].strip("/") or "index"
+        suffix = path[len(_PATH_PREFIX):].strip("/") or "index"
         if suffix in _KNOWN_PATHS:
             return f"api_v1_{suffix}"
         return "api_v1_other"
