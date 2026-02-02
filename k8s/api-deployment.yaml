@@ -20,8 +20,8 @@ spec:
     spec:
       containers:
         - name: api
-          image: your-registry/news-sentiment-api:latest  # Replace with your image
-          imagePullPolicy: Always
+          image: news-sentiment-api:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
               name: http

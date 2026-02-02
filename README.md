@@ -376,6 +376,20 @@ pytest
 
 Daily comparison reads (`/today`, `/date/{date}`, `/most-uplifting`) are cached in memory by date. **TTL:** "Today" (UTC) uses a short TTL (default 5 min); past dates use a longer TTL (default 24 h). **Invalidation:** Same-process writes invalidate the cache for that date; the collector runs in a separate process, so its writes do not invalidate the API cache—staleness is cleared when the TTL expires. **Env vars:** `CACHE_ENABLED`, `CACHE_TTL_TODAY_SECONDS`, `CACHE_TTL_PAST_SECONDS`. See **QUICKSTART.md** → [Caching](QUICKSTART.md#caching) for details.
 
+**Process flow with cache (request path):**
+
+```mermaid
+flowchart LR
+    A[Client] --> B[FastAPI Routes]
+    B --> C{Cache get date}
+    C -->|hit| D[Return cached]
+    C -->|miss| E[MongoDB]
+    E --> F[set cache]
+    F --> G[Return]
+    D --> H[Response]
+    G --> H
+```
+
 **Architecture before cache (every request hits the database):**
 
 ```

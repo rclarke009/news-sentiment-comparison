@@ -50,46 +50,15 @@ def get_comparison_for_date(date_str: str) -> Optional[DailyComparison]:
     Get daily comparison for date, using cache when enabled.
     On cache miss, fetches from DB and populates cache.
     """
-    # #region agent log (only write when running in workspace to avoid slow file I/O on Render)
-    import json
-    import time
-    from pathlib import Path
-    _resolved = Path(__file__).resolve()
-    _debug_path = _resolved.parents[3] / ".cursor" / "debug.log"
-    def _agent_log(p: dict) -> None:
-        if "conceptprojects" not in str(_resolved):
-            return
-        try:
-            with open(_debug_path, "a") as f:
-                f.write(json.dumps(p) + "\n")
-        except Exception:
-            pass
-    _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H1_H2_H5", "location": "routes.py:get_comparison_for_date", "message": "entry", "data": {"date_str": date_str}, "timestamp": int(time.time() * 1000)})
-    # #endregion
     cache = get_cache()
-    comparison = None
-    cache_hit = False
     if cache is not None:
         comparison = cache.get(date_str)
-        cache_hit = comparison is not None
-        # #region agent log
-        _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H1_H5", "location": "routes.py:get_comparison_for_date", "message": "after_cache_get", "data": {"date_str": date_str, "cache_hit": cache_hit}, "timestamp": int(time.time() * 1000)})
-        # #endregion
         if comparison is not None:
             return comparison
     db = get_db()
     comparison = db.get_daily_comparison(date_str)
-    # #region agent log
-    _agent_log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H2", "location": "routes.py:get_comparison_for_date", "message": "after_db_get", "data": {"date_str": date_str, "db_found": comparison is not None}, "timestamp": int(time.time() * 1000)})
-    # #endregion
     if cache is not None and comparison is not None:
         cache.set(date_str, comparison)
-    logger.info(
-        "get_comparison_for_date date=%s cache_hit=%s db_found=%s",
-        date_str,
-        cache_hit,
-        comparison is not None,
-    )
     return comparison
 
 
@@ -130,13 +99,6 @@ async def health_check(request: Request):
     Used by keep-alive pings, Render health checks, and smoke tests.
     Returns 200 as long as the app is running, without checking database connectivity.
     """
-    # #region agent log
-    logger.info(
-        "health_check entered path=/health client=%s",
-        request.client.host if request.client else "unknown",
-        extra={"hypothesisId": "H1_H3_H5", "path": "/health"},
-    )
-    # #endregion
     return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
 
 
@@ -148,13 +110,6 @@ async def health_check_db(request: Request):
     Use this for monitoring/debugging when you need to verify database connectivity.
     Returns 503 if database connection fails.
     """
-    # #region agent log
-    logger.info(
-        "health_check_db entered path=/health/db client=%s",
-        request.client.host if request.client else "unknown",
-        extra={"hypothesisId": "H4", "path": "/health/db"},
-    )
-    # #endregion
     try:
         # Test database connection
         db = get_db()
@@ -173,128 +128,20 @@ async def health_check_db(request: Request):
 @router.get("/today", response_model=DailyComparisonResponse, tags=["comparisons"])
 async def get_today(request: Request):
     """Get today's comparison."""
-    # #region agent log (only write when running in workspace to avoid slow file I/O on Render)
-    import time
-    import json
-    from pathlib import Path
-
-    _resolved_today = Path(__file__).resolve()
-    _DEBUG_LOG_PATH = _resolved_today.parents[3] / ".cursor" / "debug.log"
-
-    def _agent_log(payload: dict) -> None:
-        if "conceptprojects" not in str(_resolved_today):
-            return
-        try:
-            with open(_DEBUG_LOG_PATH, "a") as f:
-                f.write(json.dumps(payload) + "\n")
-        except Exception:
-            pass
-
-    _agent_log(
-        {
-            "sessionId": "debug-session",
-            "runId": "run1",
-            "hypothesisId": "H6_H7_H8",
-            "location": "routes.py:get_today",
-            "message": "get_today_entry",
-            "data": {},
-            "timestamp": int(time.time() * 1000),
-        }
-    )
-    # #endregion
     try:
-        # #region agent log
-        _agent_log(
-            {
-                "sessionId": "debug-session",
-                "runId": "run1",
-                "hypothesisId": "H8",
-                "location": "routes.py:get_today",
-                "message": "before_get_db",
-                "data": {},
-                "timestamp": int(time.time() * 1000),
-            }
-        )
-        # #endregion
-        # Use UTC date consistently (Render servers use UTC)
         today = datetime.utcnow().date().isoformat()
-        # #region agent log
-        _agent_log(
-            {
-                "sessionId": "debug-session",
-                "runId": "run1",
-                "hypothesisId": "H4",
-                "location": "routes.py:get_today",
-                "message": "querying_date",
-                "data": {"today": today},
-                "timestamp": int(time.time() * 1000),
-            }
-        )
-        # #endregion
         comparison = get_comparison_for_date(today)
-        # #region agent log
-        _agent_log(
-            {
-                "sessionId": "debug-session",
-                "runId": "run1",
-                "hypothesisId": "H7_H8",
-                "location": "routes.py:get_today",
-                "message": "after_get_daily_comparison",
-                "data": {"found": comparison is not None, "today": today},
-                "timestamp": int(time.time() * 1000),
-            }
-        )
-        # #endregion
 
         if not comparison:
-            # #region agent log
-            _agent_log(
-                {
-                    "sessionId": "debug-session",
-                    "runId": "run1",
-                    "hypothesisId": "H7",
-                    "location": "routes.py:get_today",
-                    "message": "no_comparison_found",
-                    "data": {"today": today},
-                    "timestamp": int(time.time() * 1000),
-                }
-            )
-            # #endregion
             logger.info("No comparison for today (%s)", today)
             raise HTTPException(
                 status_code=404, detail=f"No comparison found for today ({today})"
             )
 
-        # #region agent log
-        _agent_log(
-            {
-                "sessionId": "debug-session",
-                "runId": "run1",
-                "hypothesisId": "H7",
-                "location": "routes.py:get_today",
-                "message": "returning_comparison",
-                "data": {"date": comparison.date},
-                "timestamp": int(time.time() * 1000),
-            }
-        )
-        # #endregion
         return _convert_comparison_to_response(comparison)
     except HTTPException:
         raise
     except Exception as e:
-        # #region agent log
-        _agent_log(
-            {
-                "sessionId": "debug-session",
-                "runId": "run1",
-                "hypothesisId": "H7_H8",
-                "location": "routes.py:get_today",
-                "message": "get_today_exception",
-                "data": {"error": str(e)},
-                "timestamp": int(time.time() * 1000),
-            }
-        )
-        # #endregion
         context = _get_request_context(request)
         logger.error(
             f"Error fetching today's comparison - {context}: {e}", exc_info=True
@@ -310,24 +157,7 @@ async def get_today(request: Request):
 )
 async def get_date(date_str: str, request: Request):
     """Get comparison for a specific date (YYYY-MM-DD)."""
-    # #region agent log (only write when running in workspace to avoid slow file I/O on Render)
-    import time
-    import json
-    from pathlib import Path
-    _resolved = Path(__file__).resolve()
-    _debug_path = _resolved.parents[3] / ".cursor" / "debug.log"
-    def _log(payload: dict) -> None:
-        if "conceptprojects" not in str(_resolved):
-            return
-        try:
-            with open(_debug_path, "a") as f:
-                f.write(json.dumps(payload) + "\n")
-        except Exception:
-            pass
-    _log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H1_H2_H5", "location": "routes.py:get_date", "message": "get_date_entry", "data": {"date_str": date_str}, "timestamp": int(time.time() * 1000)})
-    # #endregion
     try:
-        # Validate date format
         datetime.strptime(date_str, "%Y-%m-%d")
     except ValueError:
         raise HTTPException(
@@ -336,9 +166,6 @@ async def get_date(date_str: str, request: Request):
 
     try:
         comparison = get_comparison_for_date(date_str)
-        # #region agent log
-        _log({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H1_H2", "location": "routes.py:get_date", "message": "get_date_after_get", "data": {"date_str": date_str, "found": comparison is not None}, "timestamp": int(time.time() * 1000)})
-        # #endregion
 
         if not comparison:
             logger.info("No comparison for date %s", date_str)
@@ -350,26 +177,6 @@ async def get_date(date_str: str, request: Request):
     except HTTPException:
         raise
     except Exception as e:
-        # #region agent log — capture exception for debug (e.g. local repro or Render logs)
-        import traceback
-        try:
-            _log({
-                "sessionId": "debug-session",
-                "runId": "run1",
-                "hypothesisId": "get_date_500",
-                "location": "routes.py:get_date",
-                "message": "get_date_exception",
-                "data": {
-                    "date_str": date_str,
-                    "error_type": type(e).__name__,
-                    "error_message": str(e),
-                    "traceback": traceback.format_exc(),
-                },
-                "timestamp": int(time.time() * 1000),
-            })
-        except Exception:
-            pass
-        # #endregion
         context = _get_request_context(request)
         logger.error(
             f"Error fetching comparison for date {date_str} - {context}: {e}",
@@ -688,35 +495,6 @@ async def get_model_comparison(
 
     Returns correlation stats, agreement rate, and divergence examples.
     """
-    # #region agent log (only write when running in workspace to avoid slow file I/O on Render)
-    import time
-    import json
-    from pathlib import Path
-
-    _resolved_model = Path(__file__).resolve()
-    _DEBUG_LOG_PATH = _resolved_model.parents[3] / ".cursor" / "debug.log"
-
-    def _agent_log(payload: dict) -> None:
-        if "conceptprojects" not in str(_resolved_model):
-            return
-        try:
-            with open(_DEBUG_LOG_PATH, "a") as f:
-                f.write(json.dumps(payload) + "\n")
-        except Exception:
-            pass
-
-    _agent_log(
-        {
-            "sessionId": "debug-session",
-            "runId": "run1",
-            "hypothesisId": "H7",
-            "location": "routes.py:get_model_comparison",
-            "message": "get_model_comparison_entry",
-            "data": {"days": days, "source": source},
-            "timestamp": int(time.time() * 1000),
-        }
-    )
-    # #endregion
     if source and source not in ["conservative", "liberal"]:
         raise HTTPException(
             status_code=400, detail="source must be 'conservative' or 'liberal'"
@@ -726,52 +504,9 @@ async def get_model_comparison(
         import statistics
 
         db = get_db()
-        # #region agent log
-        _agent_log(
-            {
-                "sessionId": "debug-session",
-                "runId": "run1",
-                "hypothesisId": "H7",
-                "location": "routes.py:get_model_comparison",
-                "message": "before_get_headlines_for_comparison",
-                "data": {"days": days, "source": source},
-                "timestamp": int(time.time() * 1000),
-            }
-        )
-        # #endregion
         headlines = db.get_headlines_for_comparison(days=days, political_side=source)
-        # #region agent log
-        _agent_log(
-            {
-                "sessionId": "debug-session",
-                "runId": "run1",
-                "hypothesisId": "H7",
-                "location": "routes.py:get_model_comparison",
-                "message": "after_get_headlines_for_comparison",
-                "data": {
-                    "headlines_count": len(headlines),
-                    "days": days,
-                    "source": source,
-                },
-                "timestamp": int(time.time() * 1000),
-            }
-        )
-        # #endregion
 
         if not headlines:
-            # #region agent log
-            _agent_log(
-                {
-                    "sessionId": "debug-session",
-                    "runId": "run1",
-                    "hypothesisId": "H7",
-                    "location": "routes.py:get_model_comparison",
-                    "message": "no_headlines_with_both_scores",
-                    "data": {"days": days, "source": source},
-                    "timestamp": int(time.time() * 1000),
-                }
-            )
-            # #endregion
             raise HTTPException(
                 status_code=404,
                 detail=f"No headlines with both scores found for the last {days} days",

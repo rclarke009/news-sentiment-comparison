@@ -21,29 +21,16 @@ function App() {
   // On initial load: request /today (server UTC), then fall back to most recent
   useEffect(() => {
     const loadInitialData = async () => {
-      // #region agent log
-      const apiBaseUrl = import.meta.env.VITE_API_URL || '/api/v1';
-      fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:loadInitialData',message:'loadInitialData_entry',data:{apiBaseUrl:apiBaseUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H6_H7_H10'})}).catch(()=>{});
-      // #endregion
       try {
         setLoading(true);
         setError(null);
         setFallbackMessage(null);
         try {
-          // #region agent log
-          fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:getToday',message:'before_getToday',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H6_H7_H10'})}).catch(()=>{});
-          // #endregion
           const data = await apiService.getToday();
-          // #region agent log
-          fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:getToday',message:'after_getToday',data:{success:true,date:data.date},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H7'})}).catch(()=>{});
-          // #endregion
           setComparison(data);
           skipNextSelectedDateEffect.current = true;
           setSelectedDate(data.date);
         } catch (err: any) {
-          // #region agent log
-          fetch('http://127.0.0.1:7245/ingest/e9826b1a-2dde-4f1c-88b3-12213b89f14e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:getToday',message:'getToday_error',data:{status:err?.response?.status,message:err?.message,statusText:err?.response?.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H6_H7'})}).catch(()=>{});
-          // #endregion
           if (err?.response?.status === 404) {
             try {
               const history = await apiService.getHistory(30);

@@ -35,8 +35,8 @@ spec:
           
           containers:
             - name: collector
-              image: your-registry/news-sentiment-api:latest  # Same image as API
-              imagePullPolicy: Always
+              image: news-sentiment-api:latest
+              imagePullPolicy: IfNotPresent
               command: ["python", "scripts/run_collector.py"]
               
               env:
