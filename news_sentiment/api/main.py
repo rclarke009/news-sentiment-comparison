@@ -14,7 +14,11 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from news_sentiment.config import get_config
 from news_sentiment.api import routes
-from news_sentiment.api.metrics import get_metrics_output, record_request, register_metrics
+from news_sentiment.api.metrics import (
+    get_metrics_output,
+    record_request,
+    register_metrics,
+)
 from news_sentiment.cache import create_cache_from_config, set_cache
 
 logger = logging.getLogger(__name__)

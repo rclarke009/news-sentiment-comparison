@@ -184,6 +184,7 @@ class NewsDatabase:
             # Invalidate cache so same-process readers see fresh data (collector is separate process, so no-op there)
             try:
                 from news_sentiment.cache import get_cache
+
                 cache = get_cache()
                 if cache is not None:
                     cache.invalidate(comparison.date)

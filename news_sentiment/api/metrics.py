@@ -15,7 +15,16 @@ from prometheus_client import (
 # Normalized path label: e.g. /api/v1/today -> api_v1_today
 _PATH_PREFIX = "/api/v1/"
 _KNOWN_PATHS = frozenset(
-    {"today", "health", "history", "sources", "stats", "most_uplifting", "collect", "model_comparison"}
+    {
+        "today",
+        "health",
+        "history",
+        "sources",
+        "stats",
+        "most_uplifting",
+        "collect",
+        "model_comparison",
+    },
 )
 
 
@@ -26,7 +35,7 @@ def _normalize_path(path: str) -> str:
     if path == "/metrics":
         return "metrics"
     if path.startswith(_PATH_PREFIX):
-        suffix = path[len(_PATH_PREFIX):].strip("/") or "index"
+        suffix = path[len(_PATH_PREFIX) :].strip("/") or "index"
         if suffix in _KNOWN_PATHS:
             return f"api_v1_{suffix}"
         return "api_v1_other"
@@ -66,8 +75,12 @@ def record_request(
         return
     norm_path = _normalize_path(path)
     status_str = str(status_code)
-    _http_requests_total.labels(method=method, path=norm_path, status_code=status_str).inc()
-    _http_request_duration_seconds.labels(method=method, path=norm_path).observe(duration_seconds)
+    _http_requests_total.labels(
+        method=method, path=norm_path, status_code=status_str
+    ).inc()
+    _http_request_duration_seconds.labels(method=method, path=norm_path).observe(
+        duration_seconds
+    )
 
 
 def get_metrics_output() -> bytes:
