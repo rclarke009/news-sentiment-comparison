@@ -2,11 +2,16 @@
 
 A production-ready automation platform that orchestrates data collection, API integration, and scheduled workflows. The system automatically fetches headlines from multiple news sources via REST APIs and RSS feeds, processes them through an automated pipeline, and serves results through a RESTful API with a web dashboard. Uses AI-powered sentiment (how emotionally uplifting a headline feels) analysis as part of the processing pipeline.
 
+> **Kubernetes cluster (local only)**  
+> The Kubernetes deployment runs on the developer's machine (Docker Desktop) and is **not exposed to the internet**. The cluster is spun down when not in use. **Want to see the cluster, Prometheus/Grafana dashboards, or HPA autoscaling in action?** Contact the developer to schedule a short live demo.
+
 ## Features
 
 - 🔄 **Automated Data Collection**: Scheduled workflows orchestrate daily headline collection from multiple sources via REST APIs and RSS feeds
 - 🚀 **FastAPI Backend**: Production-ready RESTful API with health checks, authentication, and comprehensive error handling
 - 🐳 **Docker & Kubernetes**: Containerized deployment with multi-stage builds, Docker Compose for local dev, and K8s manifests for production orchestration
+- 📊 **Observability**: Prometheus metrics (`/metrics`) and Grafana dashboards for request rate, latency, and errors (see [Observability](#observability-prometheus--grafana))
+- 📈 **Stress Test & HPA**: Load testing with autoscaling demo—pods scale up under load and back down (see [Stress Test](#stress-test-hpa-autoscaling))
 - ⚙️ **Infrastructure as Code**: Complete deployment automation via Render Blueprint (render.yaml) for multi-service architecture
 - 🔐 **Secure API Endpoints**: Protected collection endpoints with secret-based authentication for external cron triggers
 - 📡 **Multi-Source Integration**: Integrates with NewsAPI REST service and RSS feeds for comprehensive data collection
@@ -73,6 +78,17 @@ A production-ready automation platform that orchestrates data collection, API in
 - **Strong typing and validation:** Pydantic models provide clear contracts, safer refactors, and predictable JSON output.
 - **Great fit for microservices:** Clean separation of endpoints (today/history/stats/collect/health) and easy container/cloud deployment.
 
+### Why Render for hosted deployment?
+- **Low-friction production:** Render’s Blueprint (`render.yaml`) deploys the API, cron job, and (optionally) frontend from the repo with minimal setup—no cluster or load balancer to manage for the live site.
+- **Git-native workflow:** Push to the connected branch triggers a rebuild and deploy; env vars live in the dashboard and survive redeploys.
+- **Free tier for MVP:** The API and cron can run on free-tier limits while validating the product; upgrading to a paid plan unlocks always-on and cron if needed.
+- **CI-friendly:** Smoke tests and ZAP in GitLab CI target the production API URL (e.g. Render); CI validates after Render deploys without owning the deploy step.
+
+### Why add Kubernetes (for practice)?
+- **Hands-on orchestration:** The same app that runs on Render is deployed to a local Kubernetes cluster (Docker Desktop) to practice workloads, CronJobs, ConfigMaps, Secrets, and Ingress without cloud cost.
+- **Observability and autoscaling:** K8s manifests include Prometheus, Grafana, and HPA so you can practice metrics, dashboards, and scaling under load (see [Observability](#observability-prometheus--grafana) and [Stress Test](#stress-test-hpa-autoscaling)).
+- **Portability:** Experience with K8s YAML and patterns (e.g. EKS + ALB in [AWS-DEPLOY.md](AWS-DEPLOY.md)) transfers to real clusters when you choose to run in the cloud.
+- **Clear split:** Production traffic stays on Render (or another host); the K8s deployment is explicitly for local practice and demos, not internet-facing.
 
 ## CI/CD Pipeline (GitLab CI)
 
@@ -841,6 +857,8 @@ kubectl apply -f k8s/hpa.yaml
 
 **Complete Kubernetes guide**: [k8s/README.md](k8s/README.md)
 
+**Deploy to AWS (EKS + ALB):** [AWS-DEPLOY.md](AWS-DEPLOY.md) — EKS cluster, ECR, AWS Load Balancer Controller, and Ingress so the API is live on the internet (ALB free tier: 750 hrs/month for new accounts).
+
 **Key features**:
 - Multi-replica API deployment (3+ pods)
 - StatefulSet for MongoDB with persistent storage
@@ -848,6 +866,20 @@ kubectl apply -f k8s/hpa.yaml
 - HorizontalPodAutoscaler for traffic-based scaling
 - Ingress for external access with TLS
 - Health checks and self-healing
+
+#### Observability (Prometheus & Grafana)
+
+The API exposes a **Prometheus metrics** endpoint at `GET /metrics` (request count, latency by path). Use the [go-monitor](https://github.com/network-automation-projects/docker-kubernetes-demo) stack (or any Prometheus) to scrape it and build dashboards. A pre-built **Grafana dashboard** (request rate, latency p95, error rate) is available when running the go-monitor stack alongside the API. Ideal for showing instrumentation and observability in interviews.
+
+- **Setup**: [Kubernetes-Setup.md – Observability](Kubernetes-Setup.md#observability-prometheus-and-grafana)
+- **Metrics**: `http_requests_total`, `http_request_duration_seconds` (Prometheus format)
+
+#### Stress Test (HPA Autoscaling)
+
+Run a short load test so the **Horizontal Pod Autoscaler** scales the API from 2 to more replicas under load, then back down when load stops. Demonstrates production-style autoscaling and is easy to demo in under 10 minutes.
+
+- **Guide**: [STRESS-TEST.md](STRESS-TEST.md) (metrics-server, HPA, `hey` load generator, watch commands)
+- **Quick run**: `./scripts/stress-test.sh` from the project root (after installing metrics-server)
 
 ### Frontend Deployment (Netlify)
 
