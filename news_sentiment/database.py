@@ -177,9 +177,7 @@ class NewsDatabase:
             # Convert HttpUrl objects to strings (MongoDB can't encode them directly)
             doc = _convert_httpurl_to_str(doc)
 
-            collection.update_one(
-                {"date": comparison.date}, {"$set": doc}, upsert=True
-            )
+            collection.update_one({"date": comparison.date}, {"$set": doc}, upsert=True)
             logger.info(f"Saved daily comparison for {comparison.date}")
             # Invalidate cache so same-process readers see fresh data (collector is separate process, so no-op there)
             try:
